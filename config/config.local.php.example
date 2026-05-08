@@ -1,0 +1,15 @@
+<?php
+declare(strict_types=1);
+
+/** Copy to config.local.php and adjust. */
+return [
+    'db' => [
+        'host' => '127.0.0.1',
+        'port' => 3306,
+        'name' => 'tool_management',
+        'user' => 'root',
+        'pass' => 'your_password',
+    ],
+    'expected_return_hours' => 48,
+    'long_outstanding_days' => 30,
+];
