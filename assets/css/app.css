@@ -92,7 +92,7 @@ a:hover {
 }
 
 .wrap {
-  max-width: 960px;
+  max-width: 95%;
   margin: 0 auto;
   padding: 1.5rem;
 }
@@ -351,10 +351,11 @@ html[data-theme="light"] .theme-icon--moon {
 }
 
 .companies-table .companies-cell-address {
-  max-width: 16rem;
+  max-width: 25rem;
   white-space: normal;
   font-size: 0.88rem;
   vertical-align: top;
+  align-content: center;
 }
 .topnav a {
   color: var(--muted);

@@ -7,7 +7,7 @@ function tmInitNav() {
     if (role === 'super_admin') {
       if (el('nav-companies')) el('nav-companies').style.display = '';
     }
-    if (role === 'super_admin' || role === 'admin' || role === 'manager') {
+    if (role === 'super_admin' || role === 'admin') {
       if (el('nav-warehouses')) el('nav-warehouses').style.display = '';
     }
     if (role === 'super_admin' || role === 'admin') {

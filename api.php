@@ -550,6 +550,25 @@ switch ($action) {
         tm_json_response(['ok' => true, 'companies' => $rows]);
     }
 
+    case 'company_managers_list': {
+        $u = tm_require_roles(['super_admin', 'admin']);
+        $cid = (int) ($input['company_id'] ?? 0);
+        if ($u['role'] === 'admin') {
+            $cid = (int) $u['company_id'];
+        }
+        if ($cid < 1) {
+            tm_json_response(['ok' => false, 'error' => 'company_id required'], 400);
+        }
+        $stmt = $pdo->prepare(
+            'SELECT id, name, email, warehouse_id
+             FROM users
+             WHERE deleted_flag = 0 AND role = \'manager\' AND company_id = ?
+             ORDER BY name'
+        );
+        $stmt->execute([$cid]);
+        tm_json_response(['ok' => true, 'managers' => $stmt->fetchAll()]);
+    }
+
     case 'company_save': {
         tm_require_roles(['super_admin']);
         $id = isset($input['id']) ? (int) $input['id'] : 0;
@@ -580,10 +599,14 @@ switch ($action) {
     case 'warehouses_list': {
         $u = tm_require_roles(['super_admin', 'admin', 'manager']);
         $filterCo = (int) ($input['company_id'] ?? 0);
+        $legacyMid = '(SELECT u.id FROM users u WHERE u.warehouse_id = w.id AND u.role = \'manager\' AND u.deleted_flag = 0 ORDER BY u.id ASC LIMIT 1)';
+        $legacyName = '(SELECT u.name FROM users u WHERE u.warehouse_id = w.id AND u.role = \'manager\' AND u.deleted_flag = 0 ORDER BY u.id ASC LIMIT 1)';
         $sql = 'SELECT w.id, w.company_id, w.warehouse_name, w.warehouse_address, w.manager_name, w.created_at, c.name AS company_name,
-                       (SELECT u.name FROM users u WHERE u.warehouse_id = w.id AND u.role = \'manager\' AND u.deleted_flag = 0 ORDER BY u.id ASC LIMIT 1) AS manager_user_name
+                       COALESCE(w.manager_user_id, ' . $legacyMid . ') AS manager_user_id,
+                       TRIM(COALESCE(NULLIF(TRIM(mu.name), \'\'), ' . $legacyName . ', NULLIF(TRIM(w.manager_name), \'\'))) AS manager_display
                 FROM warehouses w
                 INNER JOIN companies c ON c.id = w.company_id
+                LEFT JOIN users mu ON mu.id = w.manager_user_id AND mu.deleted_flag = 0 AND mu.role = \'manager\'
                 WHERE w.deleted_flag = 0';
         $params = [];
         if ($u['role'] === 'super_admin' && $filterCo > 0) {
@@ -601,45 +624,64 @@ switch ($action) {
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
         foreach ($rows as &$row) {
-            $stored = isset($row['manager_name']) ? trim((string) $row['manager_name']) : '';
-            $linked = isset($row['manager_user_name']) ? trim((string) $row['manager_user_name']) : '';
-            unset($row['manager_user_name']);
-            $row['manager_display'] = $stored !== '' ? $stored : ($linked !== '' ? $linked : null);
+            $mid = isset($row['manager_user_id']) ? (int) $row['manager_user_id'] : 0;
+            $row['manager_user_id'] = $mid > 0 ? $mid : null;
+            $disp = isset($row['manager_display']) ? trim((string) $row['manager_display']) : '';
+            $row['manager_display'] = $disp !== '' ? $disp : null;
         }
         unset($row);
         tm_json_response(['ok' => true, 'warehouses' => $rows]);
     }
 
     case 'warehouse_save': {
-        $u = tm_require_roles(['super_admin', 'admin', 'manager']);
+        $u = tm_require_roles(['super_admin', 'admin']);
         $id = isset($input['id']) ? (int) $input['id'] : 0;
         $name = trim((string) ($input['warehouse_name'] ?? ''));
         $addr = trim((string) ($input['warehouse_address'] ?? ''));
-        $managerName = trim((string) ($input['manager_name'] ?? ''));
-        $managerName = $managerName === '' ? null : $managerName;
+        $managerNameIn = trim((string) ($input['manager_name'] ?? ''));
+        $managerNameIn = $managerNameIn === '' ? null : $managerNameIn;
+        $managerUserId = isset($input['manager_user_id']) ? (int) $input['manager_user_id'] : 0;
         $cid = (int) ($input['company_id'] ?? 0);
         if ($u['role'] === 'admin') {
             $cid = (int) $u['company_id'];
         }
-        if ($u['role'] === 'manager') {
-            $wid = (int) ($u['warehouse_id'] ?? 0);
-            if ($id < 1 || $wid < 1 || $id !== $wid) {
-                tm_json_response(['ok' => false, 'error' => 'Forbidden'], 403);
-            }
-            if ($name === '') {
-                tm_json_response(['ok' => false, 'error' => 'Name required'], 400);
-            }
-            $pdo->prepare(
-                'UPDATE warehouses SET warehouse_name=?, warehouse_address=?, manager_name=? WHERE id=? AND deleted_flag=0'
-            )->execute([$name, $addr === '' ? null : $addr, $managerName, $id]);
-            tm_json_response(['ok' => true, 'id' => $id]);
-        }
         if ($name === '' || $cid < 1) {
             tm_json_response(['ok' => false, 'error' => 'Name and company required'], 400);
         }
+        if ($managerUserId > 0) {
+            $stmt = $pdo->prepare(
+                'SELECT id, name FROM users WHERE id = ? AND deleted_flag = 0 AND role = \'manager\' AND company_id = ? LIMIT 1'
+            );
+            $stmt->execute([$managerUserId, $cid]);
+            $mgrRow = $stmt->fetch();
+            if (!$mgrRow) {
+                tm_json_response(['ok' => false, 'error' => 'Invalid manager selected'], 400);
+            }
+            $resolvedManagerUserId = $managerUserId;
+            $resolvedManagerName = trim((string) $mgrRow['name']);
+        } else {
+            $resolvedManagerUserId = null;
+            $resolvedManagerName = $managerNameIn;
+        }
         $uid = $u['id'];
+
+        $detachManagerFromOtherWarehouses = static function (PDO $pdo, int $managerUserId, int $excludeWarehouseId): void {
+            $pdo->prepare(
+                'UPDATE warehouses SET manager_user_id = NULL, manager_name = NULL
+                 WHERE manager_user_id = ? AND id <> ? AND deleted_flag = 0'
+            )->execute([$managerUserId, $excludeWarehouseId]);
+        };
+        $clearManagersForWarehouse = static function (PDO $pdo, int $warehouseId): void {
+            $pdo->prepare(
+                'UPDATE users SET warehouse_id = NULL WHERE role = \'manager\' AND warehouse_id = ?'
+            )->execute([$warehouseId]);
+        };
+        $assignManagerToWarehouse = static function (PDO $pdo, int $warehouseId, int $managerUserId): void {
+            $pdo->prepare('UPDATE users SET warehouse_id = ? WHERE id = ? AND role = \'manager\'')->execute([$warehouseId, $managerUserId]);
+        };
+
         if ($id > 0) {
-            $stmt = $pdo->prepare('SELECT company_id FROM warehouses WHERE id = ?');
+            $stmt = $pdo->prepare('SELECT company_id FROM warehouses WHERE id = ? AND deleted_flag = 0');
             $stmt->execute([$id]);
             $existing = $stmt->fetchColumn();
             if ($existing === false) {
@@ -648,15 +690,62 @@ switch ($action) {
             if ($u['role'] === 'admin' && (int) $existing !== $cid) {
                 tm_json_response(['ok' => false, 'error' => 'Forbidden'], 403);
             }
-            $pdo->prepare(
-                'UPDATE warehouses SET warehouse_name=?, warehouse_address=?, company_id=?, manager_name=? WHERE id=?'
-            )->execute([$name, $addr === '' ? null : $addr, $cid, $managerName, $id]);
+            $pdo->beginTransaction();
+            try {
+                if ($managerUserId > 0) {
+                    $detachManagerFromOtherWarehouses($pdo, $managerUserId, $id);
+                }
+                $clearManagersForWarehouse($pdo, $id);
+                $pdo->prepare(
+                    'UPDATE warehouses SET warehouse_name = ?, warehouse_address = ?, company_id = ?, manager_user_id = ?, manager_name = ?
+                     WHERE id = ? AND deleted_flag = 0'
+                )->execute([
+                    $name,
+                    $addr === '' ? null : $addr,
+                    $cid,
+                    $resolvedManagerUserId,
+                    $resolvedManagerName,
+                    $id,
+                ]);
+                if ($managerUserId > 0) {
+                    $assignManagerToWarehouse($pdo, $id, $managerUserId);
+                }
+                $pdo->commit();
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                tm_json_response(['ok' => false, 'error' => 'Could not save warehouse'], 500);
+            }
             tm_json_response(['ok' => true, 'id' => $id]);
         }
-        $pdo->prepare(
-            'INSERT INTO warehouses (company_id, warehouse_name, warehouse_address, manager_name, user_id) VALUES (?,?,?,?,?)'
-        )->execute([$cid, $name, $addr === '' ? null : $addr, $managerName, $uid]);
-        tm_json_response(['ok' => true, 'id' => (int) $pdo->lastInsertId()]);
+
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare(
+                'INSERT INTO warehouses (company_id, warehouse_name, warehouse_address, manager_user_id, manager_name, user_id)
+                 VALUES (?,?,?,?,?,?)'
+            )->execute([
+                $cid,
+                $name,
+                $addr === '' ? null : $addr,
+                $resolvedManagerUserId,
+                $resolvedManagerName,
+                $uid,
+            ]);
+            $newId = (int) $pdo->lastInsertId();
+            if ($managerUserId > 0) {
+                $detachManagerFromOtherWarehouses($pdo, $managerUserId, $newId);
+                $assignManagerToWarehouse($pdo, $newId, $managerUserId);
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            tm_json_response(['ok' => false, 'error' => 'Could not save warehouse'], 500);
+        }
+        tm_json_response(['ok' => true, 'id' => $newId]);
     }
 
     case 'users_list': {

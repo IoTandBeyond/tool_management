@@ -56,13 +56,16 @@ CREATE TABLE warehouses (
   warehouse_name VARCHAR(200) NOT NULL,
   warehouse_address TEXT,
   manager_name VARCHAR(200) DEFAULT NULL,
+  manager_user_id INT UNSIGNED DEFAULT NULL,
   user_id INT UNSIGNED DEFAULT NULL COMMENT 'User who created the warehouse',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   edited_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   deleted_flag TINYINT(1) NOT NULL DEFAULT 0,
   INDEX idx_wh_co (company_id),
+  INDEX idx_wh_manager_user (manager_user_id),
   CONSTRAINT fk_wh_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_wh_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT fk_wh_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_wh_manager_user FOREIGN KEY (manager_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 ALTER TABLE users
@@ -187,8 +190,7 @@ INSERT INTO tool_warehouse_assignment (tool_id, company_id, warehouse_id, stock_
   (2, 1, 1, 3),
   (3, 1, 1, 2);
 
-</think>
-
-
-<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
-StrReplace
+UPDATE warehouses w
+INNER JOIN users u ON u.warehouse_id = w.id AND u.role = 'manager' AND u.deleted_flag = 0
+SET w.manager_user_id = u.id, w.manager_name = u.name
+WHERE w.id = 1;

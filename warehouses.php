@@ -46,8 +46,10 @@
       <input type="text" id="f-name">
       <label for="f-addr" style="margin-top: 0.75rem;">Address</label>
       <textarea id="f-addr"></textarea>
-      <label for="f-manager" style="margin-top: 0.75rem;">Manager name</label>
-      <input type="text" id="f-manager" placeholder="Primary contact at this warehouse">
+      <label for="f-manager" style="margin-top: 0.75rem;">Manager</label>
+      <select id="f-manager">
+        <option value="">Unassigned</option>
+      </select>
       <div class="row-actions" style="margin-top: 1rem;">
         <button type="button" class="btn btn-primary" id="f-save">Save</button>
         <button type="button" class="btn btn-secondary" id="f-close">Close</button>
@@ -62,7 +64,7 @@
         return session.role === 'super_admin' || session.role === 'admin';
       }
       function canEditWarehouse() {
-        return session.role === 'super_admin' || session.role === 'admin' || session.role === 'manager';
+        return session.role === 'super_admin' || session.role === 'admin';
       }
       function esc(s) {
         var d = document.createElement('div');
@@ -79,6 +81,24 @@
             o.textContent = c.name;
             sel.appendChild(o);
           });
+          if (cb) cb();
+        });
+      }
+      function loadManagers(companyId, selectedManagerId, cb) {
+        var sel = document.getElementById('f-manager');
+        sel.innerHTML = '<option value="">Unassigned</option>';
+        if (!companyId) {
+          if (cb) cb();
+          return;
+        }
+        tmApi('company_managers_list', { company_id: companyId }, true).then(function (d) {
+          (d.managers || []).forEach(function (m) {
+            var o = document.createElement('option');
+            o.value = m.id;
+            o.textContent = m.name || m.email || ('Manager #' + m.id);
+            sel.appendChild(o);
+          });
+          if (selectedManagerId) sel.value = String(selectedManagerId);
           if (cb) cb();
         });
       }
@@ -119,9 +139,10 @@
               document.getElementById('f-id').value = row.id;
               document.getElementById('f-name').value = row.warehouse_name || '';
               document.getElementById('f-addr').value = row.warehouse_address || '';
-              document.getElementById('f-manager').value = row.manager_name || '';
               if (session.role === 'super_admin') document.getElementById('f-co').value = String(row.company_id);
-              document.getElementById('modal').style.display = 'flex';
+              loadManagers(row.company_id, row.manager_user_id || null, function () {
+                document.getElementById('modal').style.display = 'flex';
+              });
             });
           });
         });
@@ -131,9 +152,13 @@
         document.getElementById('f-id').value = '';
         document.getElementById('f-name').value = '';
         document.getElementById('f-addr').value = '';
-        document.getElementById('f-manager').value = '';
         if (session.role === 'admin') document.getElementById('f-co').value = String(session.company_id);
-        document.getElementById('modal').style.display = 'flex';
+        var cid = session.role === 'super_admin'
+          ? parseInt(document.getElementById('f-co').value, 10)
+          : session.company_id;
+        loadManagers(cid, null, function () {
+          document.getElementById('modal').style.display = 'flex';
+        });
       });
       document.getElementById('f-close').addEventListener('click', function () {
         document.getElementById('modal').style.display = 'none';
@@ -146,7 +171,9 @@
           id: document.getElementById('f-id').value ? parseInt(document.getElementById('f-id').value, 10) : undefined,
           warehouse_name: document.getElementById('f-name').value.trim(),
           warehouse_address: document.getElementById('f-addr').value.trim(),
-          manager_name: document.getElementById('f-manager').value.trim()
+          manager_user_id: document.getElementById('f-manager').value
+            ? parseInt(document.getElementById('f-manager').value, 10)
+            : null
         };
         if (session.role === 'super_admin' || session.role === 'admin') {
           payload.company_id = cid;
@@ -163,7 +190,7 @@
         tmApi('logout', {}, true).then(function () { window.location.href = 'login.php'; });
       });
       tmApi('me', {}, true).then(function (m) {
-        if (!m.logged_in || (m.role !== 'super_admin' && m.role !== 'admin' && m.role !== 'manager')) {
+        if (!m.logged_in || (m.role !== 'super_admin' && m.role !== 'admin')) {
           window.location.href = 'dashboard.php';
           return;
         }
@@ -189,18 +216,22 @@
             });
           });
           document.getElementById('btn-filter').addEventListener('click', load);
-          loadCompanies(function () { load(); });
+          document.getElementById('f-co').addEventListener('change', function () {
+            var cid = parseInt(document.getElementById('f-co').value, 10);
+            loadManagers(cid, null);
+          });
+          loadCompanies(function () {
+            var initialCid = parseInt(document.getElementById('f-co').value, 10);
+            loadManagers(initialCid, null, function () { load(); });
+          });
           return;
         }
         if (m.role === 'admin') {
           document.getElementById('sub-line').textContent = 'Warehouses for your company — add or edit.';
           document.getElementById('f-co-wrap').style.display = 'none';
-          loadCompanies(function () { load(); });
+          loadManagers(m.company_id, null, function () { load(); });
           return;
         }
-        document.getElementById('sub-line').textContent = 'Your assigned warehouse.';
-        document.getElementById('f-co-wrap').style.display = 'none';
-        load();
       });
     })();
   </script>
