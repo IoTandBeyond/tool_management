@@ -89,20 +89,8 @@
           none.style.display = 'none';
           table.style.display = 'table';
           rows.forEach(function (r) {
+            var returnRequired = Number(r.return_required) === 1 || r.asset_type === 'measurement';
             var tr = document.createElement('tr');
-            var btn = document.createElement('button');
-            btn.className = 'btn btn-primary';
-            btn.type = 'button';
-            btn.textContent = 'Return';
-            btn.addEventListener('click', function () {
-              pendingToolId = r.tool_id;
-              pendingName = r.tool_name;
-              scanPanel.style.display = 'block';
-              document.getElementById('scan-hint').textContent = 'Returning: ' + r.tool_name + ' (barcode ' + r.barcode + ')';
-              scanMsg.innerHTML = '';
-              scanInput.value = '';
-              scanInput.focus();
-            });
             var td0 = document.createElement('td');
             td0.textContent = r.tool_name;
             var td1 = document.createElement('td');
@@ -110,7 +98,24 @@
             var td2 = document.createElement('td');
             td2.textContent = tmFormatDt(r.checkout_at);
             var td3 = document.createElement('td');
-            td3.appendChild(btn);
+            if (returnRequired) {
+              var btn = document.createElement('button');
+              btn.className = 'btn btn-primary';
+              btn.type = 'button';
+              btn.textContent = 'Return';
+              btn.addEventListener('click', function () {
+                pendingToolId = r.tool_id;
+                pendingName = r.tool_name;
+                scanPanel.style.display = 'block';
+                document.getElementById('scan-hint').textContent = 'Returning: ' + r.tool_name + ' (barcode ' + r.barcode + ')';
+                scanMsg.innerHTML = '';
+                scanInput.value = '';
+                scanInput.focus();
+              });
+              td3.appendChild(btn);
+            } else {
+              td3.textContent = 'Consumable (no return)';
+            }
             tr.appendChild(td0);
             tr.appendChild(td1);
             tr.appendChild(td2);

@@ -307,6 +307,10 @@ th {
   background: rgba(248, 113, 113, 0.15);
   color: var(--danger);
 }
+.badge-maintenance {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
 
 html[data-theme="light"] .badge-available {
   background: rgba(46, 125, 50, 0.12);

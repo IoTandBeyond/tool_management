@@ -70,6 +70,37 @@ function tm_expected_return_at(): string
     return (new DateTimeImmutable("+{$hours} hours"))->format('Y-m-d H:i:s');
 }
 
+function tm_measurement_company_id(): int
+{
+    global $config;
+    return (int) ($config['measurement_company_id'] ?? 2);
+}
+
+/** @param array<string, mixed> $tool */
+function tm_tool_is_returnable(array $tool): bool
+{
+    return ($tool['asset_type'] ?? 'consumable') === 'measurement';
+}
+
+/**
+ * Consumables stay checked out without overdue; measurement gear uses normal due date.
+ *
+ * @param array<string, mixed> $tool
+ */
+function tm_tool_expected_return_at_for_checkout(array $tool): string
+{
+    if (!tm_tool_is_returnable($tool)) {
+        return '2099-12-31 23:59:59';
+    }
+    return tm_expected_return_at();
+}
+
+/** SQL fragment: transaction is eligible for overdue / long-outstanding reports */
+function tm_sql_returnable_transactions(): string
+{
+    return "EXISTS (SELECT 1 FROM tools tl2 WHERE tl2.id = tr.tool_id AND tl2.asset_type = 'measurement')";
+}
+
 /** Relative path under project root, e.g. uploads/tools/abc.png */
 function tm_is_safe_tool_image_path(string $path): bool
 {
@@ -103,10 +134,29 @@ function tm_delete_tool_image_file(?string $relative): void
 function tm_tool_by_company_scan_code(PDO $pdo, int $companyId, string $code): ?array
 {
     $stmt = $pdo->prepare(
-        'SELECT id, name, barcode, nfc_id, missing_flag, is_active FROM tools
+        'SELECT id, name, barcode, nfc_id, missing_flag, is_active, asset_type, maintenance_status
+         FROM tools
          WHERE company_id = ? AND (barcode = ? OR (nfc_id IS NOT NULL AND nfc_id = ?)) LIMIT 1'
     );
     $stmt->execute([$companyId, $code, $code]);
     $row = $stmt->fetch();
     return $row ?: null;
+}
+
+/** @param array<string, mixed>|null $tool */
+function tm_tool_available_for_checkout(?array $tool): ?string
+{
+    if (!$tool) {
+        return 'Tool not found for this code';
+    }
+    if ((int) ($tool['missing_flag'] ?? 0) === 1) {
+        return 'Tool is marked missing — contact staff';
+    }
+    if ((int) ($tool['is_active'] ?? 0) !== 1) {
+        return 'Tool is not active in catalog';
+    }
+    if (($tool['maintenance_status'] ?? 'available') === 'in_maintenance') {
+        return 'Tool is out for maintenance — not available to borrow';
+    }
+    return null;
 }

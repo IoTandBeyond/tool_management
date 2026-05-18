@@ -97,11 +97,19 @@ CREATE TABLE operators (
 CREATE TABLE tools (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   company_id INT UNSIGNED NOT NULL,
+  asset_type ENUM('consumable', 'measurement') NOT NULL DEFAULT 'consumable',
   name VARCHAR(200) NOT NULL,
   barcode VARCHAR(128) NOT NULL,
   nfc_id VARCHAR(128) DEFAULT NULL,
   category_id INT UNSIGNED DEFAULT NULL,
   description TEXT,
+  uom VARCHAR(64) DEFAULT NULL,
+  range_spec VARCHAR(128) DEFAULT NULL,
+  brand_model VARCHAR(200) DEFAULT NULL,
+  tool_condition VARCHAR(64) DEFAULT NULL,
+  location VARCHAR(200) DEFAULT NULL,
+  last_maintenance DATE DEFAULT NULL,
+  maintenance_status ENUM('available', 'in_maintenance') NOT NULL DEFAULT 'available',
   image VARCHAR(512) DEFAULT NULL,
   missing_flag TINYINT(1) NOT NULL DEFAULT 0,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
@@ -146,6 +154,24 @@ CREATE TABLE transactions (
   INDEX idx_open (checkin_at),
   INDEX idx_co (company_id),
   INDEX idx_wh (warehouse_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE tool_maintenance (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tool_id INT UNSIGNED NOT NULL,
+  owner_company_id INT UNSIGNED NOT NULL,
+  provider_company_id INT UNSIGNED NOT NULL,
+  sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  returned_at DATETIME DEFAULT NULL,
+  notes TEXT,
+  created_by INT UNSIGNED DEFAULT NULL,
+  INDEX idx_tm_tool (tool_id),
+  INDEX idx_tm_open (tool_id, returned_at),
+  INDEX idx_tm_provider (provider_company_id),
+  CONSTRAINT fk_tm_tool FOREIGN KEY (tool_id) REFERENCES tools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_tm_owner FOREIGN KEY (owner_company_id) REFERENCES companies(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_tm_provider FOREIGN KEY (provider_company_id) REFERENCES companies(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_tm_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE activity_log (

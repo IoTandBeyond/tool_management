@@ -68,14 +68,19 @@ switch ($action) {
         $stmt = $pdo->prepare(
             'SELECT t.id AS transaction_id, t.checkout_at, t.expected_return_at, t.warehouse_id,
                     t.tool_id, tl.name AS tool_name, tl.barcode, tl.nfc_id, tl.missing_flag,
-                    tl.image AS tool_image
+                    tl.image AS tool_image, tl.asset_type
              FROM transactions t
              INNER JOIN tools tl ON tl.id = t.tool_id
              WHERE t.operator_id = ? AND t.checkin_at IS NULL
              ORDER BY t.checkout_at DESC'
         );
         $stmt->execute([$operatorId]);
-        tm_json_response(['ok' => true, 'borrowed' => $stmt->fetchAll()]);
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$row) {
+            $row['return_required'] = tm_tool_is_returnable($row) ? 1 : 0;
+        }
+        unset($row);
+        tm_json_response(['ok' => true, 'borrowed' => $rows]);
     }
 
     case 'checkout_tool': {
@@ -101,17 +106,12 @@ switch ($action) {
             tm_json_response(['ok' => false, 'error' => 'Warehouse mismatch'], 400);
         }
         $tool = tm_tool_by_company_scan_code($pdo, $companyId, $code);
-        if (!$tool) {
-            tm_json_response(['ok' => false, 'error' => 'Tool not found for this code'], 404);
-        }
-        if ((int) $tool['missing_flag'] === 1) {
-            tm_json_response(['ok' => false, 'error' => 'Tool is marked missing — contact staff'], 409);
-        }
-        if ((int) $tool['is_active'] !== 1) {
-            tm_json_response(['ok' => false, 'error' => 'Tool is not active in catalog'], 409);
+        $availErr = tm_tool_available_for_checkout($tool);
+        if ($availErr !== null) {
+            tm_json_response(['ok' => false, 'error' => $availErr], $tool ? 409 : 404);
         }
         $tid = (int) $tool['id'];
-        $expected = tm_expected_return_at();
+        $expected = tm_tool_expected_return_at_for_checkout($tool);
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare(
@@ -153,6 +153,7 @@ switch ($action) {
             'ok' => true,
             'tool' => ['id' => $tid, 'name' => $tool['name'], 'barcode' => $tool['barcode']],
             'expected_return_at' => $expected,
+            'return_required' => tm_tool_is_returnable($tool),
         ]);
     }
 
@@ -179,14 +180,9 @@ switch ($action) {
             tm_json_response(['ok' => false, 'error' => 'Warehouse mismatch'], 400);
         }
         $tool = tm_tool_by_company_scan_code($pdo, $companyId, $code);
-        if (!$tool) {
-            tm_json_response(['ok' => false, 'error' => 'Tool not found for this code'], 404);
-        }
-        if ((int) $tool['missing_flag'] === 1) {
-            tm_json_response(['ok' => false, 'error' => 'Tool is marked missing — contact staff'], 409);
-        }
-        if ((int) $tool['is_active'] !== 1) {
-            tm_json_response(['ok' => false, 'error' => 'Tool is not active in catalog'], 409);
+        $availErr = tm_tool_available_for_checkout($tool);
+        if ($availErr !== null) {
+            tm_json_response(['ok' => false, 'error' => $availErr], $tool ? 409 : 404);
         }
         $tid = (int) $tool['id'];
         $stmt = $pdo->prepare(
@@ -202,6 +198,7 @@ switch ($action) {
             'ok' => true,
             'tool' => ['id' => $tid, 'name' => $tool['name'], 'barcode' => $tool['barcode']],
             'stock_qty' => (int) $stock,
+            'return_required' => tm_tool_is_returnable($tool),
         ]);
     }
 
@@ -245,20 +242,15 @@ switch ($action) {
         $counts = [];
         foreach ($codes as $code) {
             $tool = tm_tool_by_company_scan_code($pdo, $companyId, $code);
-            if (!$tool) {
-                tm_json_response(['ok' => false, 'error' => 'Tool not found for code: ' . $code], 404);
-            }
-            if ((int) $tool['missing_flag'] === 1) {
-                tm_json_response(['ok' => false, 'error' => 'Tool marked missing: ' . $tool['name']], 409);
-            }
-            if ((int) $tool['is_active'] !== 1) {
-                tm_json_response(['ok' => false, 'error' => 'Tool inactive: ' . $tool['name']], 409);
+            $availErr = tm_tool_available_for_checkout($tool);
+            if ($availErr !== null) {
+                $label = $tool ? $tool['name'] : $code;
+                tm_json_response(['ok' => false, 'error' => $label . ': ' . $availErr], $tool ? 409 : 404);
             }
             $tid = (int) $tool['id'];
             $counts[$tid] = ($counts[$tid] ?? 0) + 1;
             $resolved[] = ['tool_id' => $tid, 'tool' => $tool, 'code' => $code];
         }
-        $expected = tm_expected_return_at();
         $pdo->beginTransaction();
         try {
             foreach ($counts as $tid => $need) {
@@ -296,6 +288,7 @@ switch ($action) {
             );
             foreach ($resolved as $row) {
                 $tid = (int) $row['tool_id'];
+                $expected = tm_tool_expected_return_at_for_checkout($row['tool']);
                 $ins->execute([$companyId, $warehouseId, $tid, $operatorId, $expected]);
                 tm_log_activity('checkout', 'Tool checked out', [
                     'tool_id' => $tid,
@@ -324,7 +317,6 @@ switch ($action) {
         tm_json_response([
             'ok' => true,
             'count' => count($resolved),
-            'expected_return_at' => $expected,
         ]);
     }
 
@@ -336,12 +328,15 @@ switch ($action) {
             tm_json_response(['ok' => false, 'error' => 'Operator, tool, and scan code required'], 400);
         }
         $stmt = $pdo->prepare(
-            'SELECT id, name, barcode, nfc_id, company_id FROM tools WHERE id = ? LIMIT 1'
+            'SELECT id, name, barcode, nfc_id, company_id, asset_type FROM tools WHERE id = ? LIMIT 1'
         );
         $stmt->execute([$toolId]);
         $tool = $stmt->fetch();
         if (!$tool) {
             tm_json_response(['ok' => false, 'error' => 'Tool not found'], 404);
+        }
+        if (!tm_tool_is_returnable($tool)) {
+            tm_json_response(['ok' => false, 'error' => 'This item is a consumable and does not need to be returned'], 409);
         }
         $match = ($tool['barcode'] === $code) || ($tool['nfc_id'] !== null && $tool['nfc_id'] === $code);
         if (!$match) {
@@ -397,7 +392,9 @@ switch ($action) {
             )->fetchColumn();
             $missing = (int) $pdo->query('SELECT COUNT(*) FROM tools WHERE missing_flag = 1 AND is_active = 1')->fetchColumn();
             $overdue = (int) $pdo->query(
-                'SELECT COUNT(*) FROM transactions WHERE checkin_at IS NULL AND expected_return_at < NOW()'
+                'SELECT COUNT(*) FROM transactions tr
+                 INNER JOIN tools tl ON tl.id = tr.tool_id
+                 WHERE tr.checkin_at IS NULL AND tr.expected_return_at < NOW() AND tl.asset_type = \'measurement\''
             )->fetchColumn();
         } elseif ($u['role'] === 'admin' && $u['company_id']) {
             $cid = $u['company_id'];
@@ -414,7 +411,9 @@ switch ($action) {
             $stmt->execute([$cid]);
             $missing = (int) $stmt->fetchColumn();
             $stmt = $pdo->prepare(
-                'SELECT COUNT(*) FROM transactions WHERE checkin_at IS NULL AND expected_return_at < NOW() AND company_id = ?'
+                'SELECT COUNT(*) FROM transactions tr
+                 INNER JOIN tools tl ON tl.id = tr.tool_id
+                 WHERE tr.checkin_at IS NULL AND tr.expected_return_at < NOW() AND tr.company_id = ? AND tl.asset_type = \'measurement\''
             );
             $stmt->execute([$cid]);
             $overdue = (int) $stmt->fetchColumn();
@@ -435,7 +434,9 @@ switch ($action) {
             $stmt->execute([$wid]);
             $missing = (int) $stmt->fetchColumn();
             $stmt = $pdo->prepare(
-                'SELECT COUNT(*) FROM transactions WHERE checkin_at IS NULL AND expected_return_at < NOW() AND warehouse_id = ?'
+                'SELECT COUNT(*) FROM transactions tr
+                 INNER JOIN tools tl ON tl.id = tr.tool_id
+                 WHERE tr.checkin_at IS NULL AND tr.expected_return_at < NOW() AND tr.warehouse_id = ? AND tl.asset_type = \'measurement\''
             );
             $stmt->execute([$wid]);
             $overdue = (int) $stmt->fetchColumn();
@@ -538,6 +539,7 @@ switch ($action) {
             'role' => $u['role'],
             'company_id' => $u['company_id'],
             'warehouse_id' => $u['warehouse_id'],
+            'measurement_company_id' => tm_measurement_company_id(),
         ]);
     }
 
@@ -892,36 +894,50 @@ switch ($action) {
     case 'tools_list': {
         $u = tm_require_roles(['super_admin', 'admin', 'manager']);
         $filterCo = (int) ($input['company_id'] ?? 0);
+        $assetTypeFilter = trim((string) ($input['asset_type'] ?? ''));
+        if ($assetTypeFilter !== '' && !in_array($assetTypeFilter, ['consumable', 'measurement'], true)) {
+            tm_json_response(['ok' => false, 'error' => 'Invalid asset_type'], 400);
+        }
         if ($u['role'] === 'admin' || $u['role'] === 'manager') {
             $filterCo = (int) $u['company_id'];
         }
         if ($u['role'] === 'super_admin' && $filterCo < 1) {
             tm_json_response(['ok' => false, 'error' => 'company_id required'], 400);
         }
+        if ($assetTypeFilter === 'measurement' && $filterCo !== tm_measurement_company_id()) {
+            tm_json_response(['ok' => false, 'error' => 'Measurement equipment is not enabled for this company'], 403);
+        }
+        $toolCols = 't.id, t.company_id, t.asset_type, t.name, t.barcode, t.nfc_id, t.description, t.uom, t.range_spec,
+                        t.brand_model, t.tool_condition, t.location, t.last_maintenance, t.maintenance_status, t.image,
+                        t.missing_flag, t.is_active, t.created_at, c.name AS category_name, c.id AS category_id';
+        $assetSql = $assetTypeFilter !== '' ? ' AND t.asset_type = ?' : '';
+        $assetParams = $assetTypeFilter !== '' ? [$assetTypeFilter] : [];
         if ($u['role'] === 'manager') {
             $wid = (int) $u['warehouse_id'];
             $stmt = $pdo->prepare(
-                'SELECT t.id, t.company_id, t.name, t.barcode, t.nfc_id, t.description, t.image,
-                        t.missing_flag, t.is_active, t.created_at, c.name AS category_name, c.id AS category_id,
-                        twa.stock_qty, twa.id AS assignment_id, w.warehouse_name
+                'SELECT ' . $toolCols . ', twa.stock_qty, twa.id AS assignment_id, w.warehouse_name,
+                        pc.name AS maintenance_provider_name
                  FROM tools t
                  INNER JOIN tool_warehouse_assignment twa ON twa.tool_id = t.id AND twa.warehouse_id = ? AND twa.deleted_flag = 0
                  INNER JOIN warehouses w ON w.id = twa.warehouse_id AND w.deleted_flag = 0
                  LEFT JOIN categories c ON c.id = t.category_id AND c.company_id = t.company_id
-                 WHERE t.company_id = ?
+                 LEFT JOIN tool_maintenance tm ON tm.tool_id = t.id AND tm.returned_at IS NULL
+                 LEFT JOIN companies pc ON pc.id = tm.provider_company_id
+                 WHERE t.company_id = ?' . $assetSql . '
                  ORDER BY t.name'
             );
-            $stmt->execute([$wid, $filterCo]);
+            $stmt->execute(array_merge([$wid, $filterCo], $assetParams));
         } else {
             $stmt = $pdo->prepare(
-                'SELECT t.id, t.company_id, t.name, t.barcode, t.nfc_id, t.description, t.image,
-                        t.missing_flag, t.is_active, t.created_at, c.name AS category_name, c.id AS category_id
+                'SELECT ' . $toolCols . ', pc.name AS maintenance_provider_name
                  FROM tools t
                  LEFT JOIN categories c ON c.id = t.category_id AND c.company_id = t.company_id
-                 WHERE t.company_id = ?
+                 LEFT JOIN tool_maintenance tm ON tm.tool_id = t.id AND tm.returned_at IS NULL
+                 LEFT JOIN companies pc ON pc.id = tm.provider_company_id
+                 WHERE t.company_id = ?' . $assetSql . '
                  ORDER BY t.name'
             );
-            $stmt->execute([$filterCo]);
+            $stmt->execute(array_merge([$filterCo], $assetParams));
         }
         $tools = $stmt->fetchAll();
         foreach ($tools as &$t) {
@@ -929,13 +945,16 @@ switch ($action) {
             $ia = (int) ($t['is_active'] ?? 0);
             $t['missing_flag'] = $mf;
             $t['is_active'] = $ia;
-            if ($mf === 1) {
+            if (($t['maintenance_status'] ?? '') === 'in_maintenance') {
+                $t['catalog_status'] = 'maintenance';
+            } elseif ($mf === 1) {
                 $t['catalog_status'] = 'missing';
             } elseif ($ia !== 1) {
                 $t['catalog_status'] = 'inactive';
             } else {
                 $t['catalog_status'] = 'ok';
             }
+            $t['return_required'] = (($t['asset_type'] ?? 'consumable') === 'measurement') ? 1 : 0;
         }
         unset($t);
         if ($u['role'] !== 'manager') {
@@ -1010,6 +1029,19 @@ switch ($action) {
         $isActive = isset($input['is_active']) ? (!empty($input['is_active']) ? 1 : 0) : 1;
         $stockQty = isset($input['stock_qty']) ? max(0, (int) $input['stock_qty']) : null;
         $whForStock = isset($input['warehouse_id']) ? (int) $input['warehouse_id'] : 0;
+        $assetType = trim((string) ($input['asset_type'] ?? ''));
+        $uom = trim((string) ($input['uom'] ?? ''));
+        $uom = $uom === '' ? null : $uom;
+        $rangeSpec = trim((string) ($input['range_spec'] ?? ''));
+        $rangeSpec = $rangeSpec === '' ? null : $rangeSpec;
+        $brandModel = trim((string) ($input['brand_model'] ?? ''));
+        $brandModel = $brandModel === '' ? null : $brandModel;
+        $toolCondition = trim((string) ($input['tool_condition'] ?? ''));
+        $toolCondition = $toolCondition === '' ? null : $toolCondition;
+        $location = trim((string) ($input['location'] ?? ''));
+        $location = $location === '' ? null : $location;
+        $lastMaintenance = trim((string) ($input['last_maintenance'] ?? ''));
+        $lastMaintenance = $lastMaintenance === '' ? null : $lastMaintenance;
 
         $cid = (int) ($input['company_id'] ?? 0);
         if ($u['role'] === 'admin' || $u['role'] === 'manager') {
@@ -1023,6 +1055,28 @@ switch ($action) {
         }
         if ($cid < 1) {
             tm_json_response(['ok' => false, 'error' => 'company_id required'], 400);
+        }
+        if ($id > 0 && $assetType === '') {
+            $stmt = $pdo->prepare('SELECT asset_type FROM tools WHERE id = ?');
+            $stmt->execute([$id]);
+            $existingType = $stmt->fetchColumn();
+            $assetType = $existingType !== false ? (string) $existingType : 'consumable';
+        }
+        if ($assetType === '') {
+            $assetType = 'consumable';
+        }
+        if (!in_array($assetType, ['consumable', 'measurement'], true)) {
+            tm_json_response(['ok' => false, 'error' => 'Invalid asset type'], 400);
+        }
+        if ($assetType === 'measurement' && $cid !== tm_measurement_company_id()) {
+            tm_json_response(['ok' => false, 'error' => 'Measurement equipment is only for the configured measurement company'], 403);
+        }
+        if ($assetType === 'consumable') {
+            $uom = null;
+            $rangeSpec = null;
+            $brandModel = null;
+            $toolCondition = null;
+            $location = null;
         }
 
         $imageProvided = array_key_exists('image', $input);
@@ -1074,8 +1128,11 @@ switch ($action) {
                 $finalImage = $newImagePath;
             }
             $pdo->prepare(
-                'UPDATE tools SET name=?, barcode=?, nfc_id=?, category_id=?, description=?, image=?, missing_flag=?, is_active=? WHERE id=? AND company_id=?'
-            )->execute([$name, $barcode, $nfc, $categoryId, $description, $finalImage, $missingFlag, $isActive, $id, $cid]);
+                'UPDATE tools SET asset_type=?, name=?, barcode=?, nfc_id=?, category_id=?, description=?, uom=?, range_spec=?, brand_model=?, tool_condition=?, location=?, last_maintenance=?, image=?, missing_flag=?, is_active=? WHERE id=? AND company_id=?'
+            )->execute([
+                $assetType, $name, $barcode, $nfc, $categoryId, $description, $uom, $rangeSpec, $brandModel,
+                $toolCondition, $location, $lastMaintenance, $finalImage, $missingFlag, $isActive, $id, $cid,
+            ]);
 
             if ($stockQty !== null && $whForStock > 0) {
                 $pdo->prepare(
@@ -1095,9 +1152,12 @@ switch ($action) {
             $finalInsertImage = $newImagePath;
         }
         $pdo->prepare(
-            'INSERT INTO tools (company_id, name, barcode, nfc_id, category_id, description, image, missing_flag, is_active)
-             VALUES (?,?,?,?,?,?,?,?,?)'
-        )->execute([$cid, $name, $barcode, $nfc, $categoryId, $description, $finalInsertImage, $missingFlag, $isActive]);
+            'INSERT INTO tools (company_id, asset_type, name, barcode, nfc_id, category_id, description, uom, range_spec, brand_model, tool_condition, location, last_maintenance, image, missing_flag, is_active)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        )->execute([
+            $cid, $assetType, $name, $barcode, $nfc, $categoryId, $description, $uom, $rangeSpec, $brandModel,
+            $toolCondition, $location, $lastMaintenance, $finalInsertImage, $missingFlag, $isActive,
+        ]);
         $newId = (int) $pdo->lastInsertId();
         $pdo->prepare(
             'INSERT INTO tool_warehouse_assignment (tool_id, company_id, warehouse_id, stock_qty) VALUES (?,?,?,?)'
@@ -1231,7 +1291,7 @@ switch ($action) {
         $sql = 'SELECT tr.id, tr.checkout_at, tr.checkin_at, tr.expected_return_at, tr.warehouse_id,
                        w.warehouse_name,
                        o.name AS operator_name, o.employee_id,
-                       tl.name AS tool_name, tl.barcode
+                       tl.name AS tool_name, tl.barcode, tl.asset_type
                 FROM transactions tr
                 INNER JOIN operators o ON o.id = tr.operator_id
                 INNER JOIN tools tl ON tl.id = tr.tool_id
@@ -1284,7 +1344,7 @@ switch ($action) {
                 INNER JOIN operators o ON o.id = tr.operator_id
                 INNER JOIN tools tl ON tl.id = tr.tool_id
                 INNER JOIN warehouses w ON w.id = tr.warehouse_id
-                WHERE tr.checkin_at IS NULL AND tr.expected_return_at < NOW() AND {$wSql}";
+                WHERE tr.checkin_at IS NULL AND tr.expected_return_at < NOW() AND tl.asset_type = \'measurement\' AND {$wSql}";
         $stmt = $pdo->prepare($sql . ' ORDER BY tr.expected_return_at ASC');
         $stmt->execute($wParams);
         tm_json_response(['ok' => true, 'rows' => $stmt->fetchAll()]);
@@ -1302,7 +1362,7 @@ switch ($action) {
              INNER JOIN operators o ON o.id = tr.operator_id
              INNER JOIN tools tl ON tl.id = tr.tool_id
              INNER JOIN warehouses w ON w.id = tr.warehouse_id
-             WHERE tr.checkin_at IS NULL AND tr.checkout_at < DATE_SUB(NOW(), INTERVAL ? DAY) AND {$wSql}";
+             WHERE tr.checkin_at IS NULL AND tr.checkout_at < DATE_SUB(NOW(), INTERVAL ? DAY) AND tl.asset_type = \'measurement\' AND {$wSql}";
         $params = array_merge([$days], $wParams);
         $stmt = $pdo->prepare($sql . ' ORDER BY tr.checkout_at ASC');
         $stmt->execute($params);
@@ -1338,6 +1398,166 @@ switch ($action) {
              LIMIT " . (int) $limit;
         $stmt = $pdo->prepare($sql);
         $stmt->execute($wParams);
+        tm_json_response(['ok' => true, 'rows' => $stmt->fetchAll()]);
+    }
+
+    case 'maintenance_providers_list': {
+        $u = tm_require_roles(['super_admin', 'admin', 'manager']);
+        $cid = (int) ($input['company_id'] ?? 0);
+        if ($u['role'] === 'admin' || $u['role'] === 'manager') {
+            $cid = (int) $u['company_id'];
+        }
+        if ($cid !== tm_measurement_company_id()) {
+            tm_json_response(['ok' => false, 'error' => 'Forbidden'], 403);
+        }
+        $rows = $pdo->query(
+            'SELECT id, name FROM companies WHERE deleted_flag = 0 ORDER BY name'
+        )->fetchAll();
+        tm_json_response(['ok' => true, 'providers' => $rows]);
+    }
+
+    case 'tool_send_maintenance': {
+        $u = tm_require_roles(['super_admin', 'admin', 'manager']);
+        $toolId = (int) ($input['tool_id'] ?? 0);
+        $providerId = (int) ($input['provider_company_id'] ?? 0);
+        $notes = trim((string) ($input['notes'] ?? ''));
+        $notes = $notes === '' ? null : $notes;
+        if ($toolId < 1 || $providerId < 1) {
+            tm_json_response(['ok' => false, 'error' => 'Tool and maintenance provider required'], 400);
+        }
+        $stmt = $pdo->prepare(
+            'SELECT id, company_id, asset_type, maintenance_status, name FROM tools WHERE id = ? LIMIT 1'
+        );
+        $stmt->execute([$toolId]);
+        $tool = $stmt->fetch();
+        if (!$tool) {
+            tm_json_response(['ok' => false, 'error' => 'Tool not found'], 404);
+        }
+        if ((int) $tool['company_id'] !== tm_measurement_company_id()) {
+            tm_json_response(['ok' => false, 'error' => 'Forbidden'], 403);
+        }
+        if ($u['role'] !== 'super_admin' && (int) $tool['company_id'] !== (int) $u['company_id']) {
+            tm_json_response(['ok' => false, 'error' => 'Forbidden'], 403);
+        }
+        if ($tool['asset_type'] !== 'measurement') {
+            tm_json_response(['ok' => false, 'error' => 'Only measurement equipment can be sent to maintenance'], 400);
+        }
+        if ($tool['maintenance_status'] === 'in_maintenance') {
+            tm_json_response(['ok' => false, 'error' => 'Tool is already in maintenance'], 409);
+        }
+        $stmt = $pdo->prepare('SELECT id FROM companies WHERE id = ? AND deleted_flag = 0 LIMIT 1');
+        $stmt->execute([$providerId]);
+        if (!$stmt->fetch()) {
+            tm_json_response(['ok' => false, 'error' => 'Invalid maintenance provider'], 400);
+        }
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM transactions WHERE tool_id = ? AND checkin_at IS NULL');
+        $stmt->execute([$toolId]);
+        if ((int) $stmt->fetchColumn() > 0) {
+            tm_json_response(['ok' => false, 'error' => 'Cannot send to maintenance while tool has open checkouts'], 409);
+        }
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare(
+                'INSERT INTO tool_maintenance (tool_id, owner_company_id, provider_company_id, notes, created_by)
+                 VALUES (?,?,?,?,?)'
+            )->execute([$toolId, (int) $tool['company_id'], $providerId, $notes, $u['id']]);
+            $pdo->prepare(
+                'UPDATE tools SET maintenance_status = \'in_maintenance\', is_active = 0 WHERE id = ?'
+            )->execute([$toolId]);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            tm_json_response(['ok' => false, 'error' => 'Could not send tool to maintenance'], 500);
+        }
+        tm_log_activity('maintenance_out', 'Tool sent to maintenance', [
+            'tool_id' => $toolId,
+            'tool_name' => $tool['name'],
+            'provider_company_id' => $providerId,
+        ], (int) $tool['company_id']);
+        tm_json_response(['ok' => true]);
+    }
+
+    case 'tool_return_maintenance': {
+        $u = tm_require_roles(['super_admin', 'admin', 'manager']);
+        $toolId = (int) ($input['tool_id'] ?? 0);
+        $lastMaintenance = trim((string) ($input['last_maintenance'] ?? ''));
+        $lastMaintenance = $lastMaintenance === '' ? (new DateTimeImmutable('today'))->format('Y-m-d') : $lastMaintenance;
+        if ($toolId < 1) {
+            tm_json_response(['ok' => false, 'error' => 'Tool required'], 400);
+        }
+        $stmt = $pdo->prepare(
+            'SELECT id, company_id, asset_type, maintenance_status, name FROM tools WHERE id = ? LIMIT 1'
+        );
+        $stmt->execute([$toolId]);
+        $tool = $stmt->fetch();
+        if (!$tool) {
+            tm_json_response(['ok' => false, 'error' => 'Tool not found'], 404);
+        }
+        if ((int) $tool['company_id'] !== tm_measurement_company_id()) {
+            tm_json_response(['ok' => false, 'error' => 'Forbidden'], 403);
+        }
+        if ($u['role'] !== 'super_admin' && (int) $tool['company_id'] !== (int) $u['company_id']) {
+            tm_json_response(['ok' => false, 'error' => 'Forbidden'], 403);
+        }
+        if ($tool['maintenance_status'] !== 'in_maintenance') {
+            tm_json_response(['ok' => false, 'error' => 'Tool is not in maintenance'], 409);
+        }
+        $stmt = $pdo->prepare(
+            'SELECT id FROM tool_maintenance WHERE tool_id = ? AND returned_at IS NULL ORDER BY id DESC LIMIT 1'
+        );
+        $stmt->execute([$toolId]);
+        $maintId = $stmt->fetchColumn();
+        if ($maintId === false) {
+            tm_json_response(['ok' => false, 'error' => 'No open maintenance record found'], 409);
+        }
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare('UPDATE tool_maintenance SET returned_at = NOW() WHERE id = ?')->execute([(int) $maintId]);
+            $pdo->prepare(
+                'UPDATE tools SET maintenance_status = \'available\', is_active = 1, last_maintenance = ? WHERE id = ?'
+            )->execute([$lastMaintenance, $toolId]);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            tm_json_response(['ok' => false, 'error' => 'Could not return tool from maintenance'], 500);
+        }
+        tm_log_activity('maintenance_in', 'Tool returned from maintenance', [
+            'tool_id' => $toolId,
+            'tool_name' => $tool['name'],
+        ], (int) $tool['company_id']);
+        tm_json_response(['ok' => true]);
+    }
+
+    case 'report_maintenance': {
+        $u = tm_require_roles(['super_admin', 'admin', 'manager']);
+        $cid = $u['company_id'];
+        if ($u['role'] === 'super_admin') {
+            $filterCo = (int) ($input['company_id'] ?? tm_measurement_company_id());
+        } else {
+            $filterCo = (int) $cid;
+        }
+        if ($filterCo !== tm_measurement_company_id()) {
+            tm_json_response(['ok' => true, 'rows' => []]);
+        }
+        $openOnly = !isset($input['all']) || empty($input['all']);
+        $sql = 'SELECT tm.id, tm.sent_at, tm.returned_at, tm.notes,
+                       tl.id AS tool_id, tl.name AS tool_name, tl.barcode, tl.location,
+                       pc.name AS provider_name, oc.name AS owner_company_name
+                FROM tool_maintenance tm
+                INNER JOIN tools tl ON tl.id = tm.tool_id
+                INNER JOIN companies pc ON pc.id = tm.provider_company_id
+                INNER JOIN companies oc ON oc.id = tm.owner_company_id
+                WHERE tm.owner_company_id = ?';
+        if ($openOnly) {
+            $sql .= ' AND tm.returned_at IS NULL AND tl.maintenance_status = \'in_maintenance\'';
+        }
+        $sql .= ' ORDER BY tm.sent_at DESC LIMIT 500';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$filterCo]);
         tm_json_response(['ok' => true, 'rows' => $stmt->fetchAll()]);
     }
 

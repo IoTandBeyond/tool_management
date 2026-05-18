@@ -176,16 +176,21 @@
             var td2 = document.createElement('td');
             td2.textContent = tmFormatDt(r.checkout_at);
             var td3 = document.createElement('td');
-            td3.textContent = tmFormatDt(r.expected_return_at);
+            var returnRequired = Number(r.return_required) === 1 || r.asset_type === 'measurement';
+            td3.textContent = returnRequired ? tmFormatDt(r.expected_return_at) : '—';
             var td4 = document.createElement('td');
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'btn btn-primary';
-            btn.textContent = 'Return';
-            btn.addEventListener('click', function () {
-              openReturn(r.tool_id, r.tool_name, r.barcode);
-            });
-            td4.appendChild(btn);
+            if (returnRequired) {
+              var btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'btn btn-primary';
+              btn.textContent = 'Return';
+              btn.addEventListener('click', function () {
+                openReturn(r.tool_id, r.tool_name, r.barcode);
+              });
+              td4.appendChild(btn);
+            } else {
+              td4.textContent = 'Consumable';
+            }
             tr.appendChild(tdIcon);
             tr.appendChild(td0);
             tr.appendChild(td1);

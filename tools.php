@@ -15,7 +15,7 @@
   <?php require __DIR__ . '/includes/nav.php'; ?>
   <div class="wrap">
     <h1>Tools</h1>
-    <p class="sub">Company catalog and per-warehouse stock. Barcode is unique per company.</p>
+    <p class="sub">Consumable assets (PPE, supplies) — issued to operators and not returned. Barcode is unique per company.</p>
     <div id="company-row" class="row-actions" style="margin-bottom: 1rem; display: none;">
       <label for="company-select">Company</label>
       <select id="company-select"></select>
@@ -193,7 +193,7 @@
           document.getElementById('tbody').innerHTML = '';
           return;
         }
-        tmApi('tools_list', { company_id: cid }, true).then(function (data) {
+        tmApi('tools_list', { company_id: cid, asset_type: 'consumable' }, true).then(function (data) {
           toolsCache = data.tools || [];
           var tb = document.getElementById('tbody');
           tb.innerHTML = '';
@@ -320,6 +320,7 @@
       document.getElementById('f-save').addEventListener('click', function () {
         var cid = companyId();
         var payload = {
+          asset_type: 'consumable',
           company_id: me.role === 'super_admin' ? cid : undefined,
           id: document.getElementById('f-id').value ? parseInt(document.getElementById('f-id').value, 10) : undefined,
           name: document.getElementById('f-name').value.trim(),

@@ -24,6 +24,7 @@
       <button type="button" class="tab" data-tab="r3">Long outstanding</button>
       <button type="button" class="tab" data-tab="r4">Missing tools</button>
       <button type="button" class="tab" data-tab="r5">Most used</button>
+      <button type="button" class="tab" data-tab="r6" id="tab-r6" style="display:none">In maintenance</button>
     </div>
 
     <div id="panel-history" class="card">
@@ -77,7 +78,7 @@
       </div>
     </div>
     <div id="panel-r2" class="card" style="display: none;">
-      <h2>Overdue (past expected return, not checked in)</h2>
+      <h2>Overdue (measurement equipment only)</h2>
       <div style="overflow-x: auto;">
         <table>
           <thead><tr><th>Tool</th><th>Operator</th><th>Warehouse</th><th>Due</th></tr></thead>
@@ -86,7 +87,7 @@
       </div>
     </div>
     <div id="panel-r3" class="card" style="display: none;">
-      <h2>Long outstanding checkouts</h2>
+      <h2>Long outstanding (measurement equipment only)</h2>
       <p class="sub" id="r3-note"></p>
       <div style="overflow-x: auto;">
         <table>
@@ -110,6 +111,16 @@
         <table>
           <thead><tr><th>Tool</th><th>Barcode</th><th>Checkouts</th></tr></thead>
           <tbody id="rep-r5"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="panel-r6" class="card" style="display: none;">
+      <h2>Equipment in maintenance</h2>
+      <p class="sub">Tools currently at an external maintenance provider.</p>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead><tr><th>Tool</th><th>Barcode</th><th>Location</th><th>Provider</th><th>Sent</th><th>Notes</th></tr></thead>
+          <tbody id="rep-r6"></tbody>
         </table>
       </div>
     </div>
@@ -185,7 +196,7 @@
               '<td>' + esc(r.operator_name) + ' (' + esc(r.employee_id) + ')</td>' +
               '<td>' + esc(r.tool_name) + '</td>' +
               '<td>' + esc(r.warehouse_name || '—') + '</td>' +
-              '<td>' + tmFormatDt(r.expected_return_at) + '</td>';
+              '<td>' + (r.asset_type === 'measurement' ? tmFormatDt(r.expected_return_at) : '—') + '</td>';
             tb.appendChild(tr);
           });
         });
@@ -248,6 +259,19 @@
             });
           });
         }
+        if (which === 'r6') {
+          tmApi('report_maintenance', {}, true).then(function (d) {
+            var tb = document.getElementById('rep-r6');
+            tb.innerHTML = '';
+            (d.rows || []).forEach(function (r) {
+              var tr = document.createElement('tr');
+              tr.innerHTML =
+                '<td>' + esc(r.tool_name) + '</td><td>' + esc(r.barcode) + '</td><td>' + esc(r.location || '—') + '</td>' +
+                '<td>' + esc(r.provider_name) + '</td><td>' + tmFormatDt(r.sent_at) + '</td><td>' + esc(r.notes || '—') + '</td>';
+              tb.appendChild(tr);
+            });
+          });
+        }
       }
 
       document.querySelectorAll('.tab').forEach(function (tab) {
@@ -255,7 +279,7 @@
           document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
           tab.classList.add('active');
           var id = tab.dataset.tab;
-          ['history', 'r1', 'r2', 'r3', 'r4', 'r5'].forEach(function (p) {
+          ['history', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6'].forEach(function (p) {
             document.getElementById('panel-' + p).style.display = p === id ? 'block' : 'none';
           });
           if (id !== 'history') loadReports(id);
@@ -272,6 +296,12 @@
 
       ensureAuth().then(function (ok) {
         if (!ok) return;
+        tmApi('me', {}, true).then(function (m) {
+          var mid = m.measurement_company_id || 2;
+          if (m.role === 'super_admin' || (m.company_id && parseInt(m.company_id, 10) === parseInt(mid, 10))) {
+            document.getElementById('tab-r6').style.display = '';
+          }
+        });
         fillFilters();
         loadHistory();
         loadReports('r1');

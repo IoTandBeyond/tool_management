@@ -12,6 +12,7 @@ $active = $active ?? '';
     <a href="warehouses.php" id="nav-warehouses" class="<?= $active === 'warehouses' ? 'active' : '' ?>" style="display:none">Warehouses</a>
     <a href="users.php" id="nav-users" class="<?= $active === 'users' ? 'active' : '' ?>" style="display:none">Users</a>
     <a href="tools.php" class="<?= $active === 'tools' ? 'active' : '' ?>">Tools</a>
+    <a href="measurement_tools.php" id="nav-measurement" class="<?= $active === 'measurement' ? 'active' : '' ?>" style="display:none">Measurement equipment</a>
     <a href="operators.php" class="<?= $active === 'operators' ? 'active' : '' ?>">Operators</a>
     <a href="history.php" class="<?= $active === 'history' ? 'active' : '' ?>">History &amp; reports</a>
     <?php require __DIR__ . '/theme_toggle.php'; ?>
