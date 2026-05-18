@@ -59,10 +59,10 @@
       <textarea id="f-desc"></textarea>
       <fieldset class="form-fieldset-catalog">
         <legend>Catalog</legend>
-        <label style="margin-top: 0.25rem; display: flex; align-items: center; gap: 0.5rem;">
+        <label class="label-check" for="f-missing">
           <input type="checkbox" id="f-missing"> <span>Marked missing</span>
         </label>
-        <label style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <label class="label-check" for="f-active">
           <input type="checkbox" id="f-active" checked> <span>Active in catalog</span>
         </label>
       </fieldset>
@@ -76,7 +76,7 @@
       <input type="hidden" id="f-image-path" value="">
       <input type="file" id="f-image-file" accept="image/jpeg,image/png,image/webp,image/gif">
       <p class="sub" id="f-image-status" style="margin-top: 0.35rem;"></p>
-      <label style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+      <label class="label-check" for="f-remove-image">
         <input type="checkbox" id="f-remove-image">
         <span>Remove picture</span>
       </label>
@@ -95,6 +95,7 @@
   <script>
     (function () {
       var me = { role: '', company_id: null, warehouse_id: null };
+      var toolsCache = [];
 
       function companyId() {
         if (me.role === 'super_admin') {
@@ -193,9 +194,10 @@
           return;
         }
         tmApi('tools_list', { company_id: cid }, true).then(function (data) {
+          toolsCache = data.tools || [];
           var tb = document.getElementById('tbody');
           tb.innerHTML = '';
-          (data.tools || []).forEach(function (t) {
+          toolsCache.forEach(function (t) {
             var tr = document.createElement('tr');
             tr.innerHTML =
               photoCell(t) +
@@ -259,32 +261,36 @@
       }
 
       function openEdit(id) {
-        tmApi('tools_list', { company_id: companyId() }, true).then(function (data) {
-          var t = (data.tools || []).find(function (x) { return x.id === id; });
-          if (!t) return;
-          document.getElementById('modal-title').textContent = 'Edit tool';
-          document.getElementById('f-id').value = t.id;
-          document.getElementById('f-name').value = t.name;
-          document.getElementById('f-barcode').value = t.barcode;
-          document.getElementById('f-nfc').value = t.nfc_id || '';
-          document.getElementById('f-desc').value = t.description || '';
-          document.getElementById('f-missing').checked = !!t.missing_flag;
-          document.getElementById('f-active').checked = !!t.is_active;
-          document.getElementById('f-image-path').value = t.image || '';
-          document.getElementById('f-image-file').value = '';
-          document.getElementById('f-remove-image').checked = false;
-          document.getElementById('f-image-status').textContent = t.image ? 'Picture on file.' : '';
-          document.getElementById('f-stock').value = String(t.stock_qty != null ? t.stock_qty : '');
-          loadCategories().then(function () {
-            document.getElementById('f-cat').value = t.category_id || '';
-            loadWarehouses(function () {
-              if (t.stock_qty != null && me.warehouse_id) {
-                document.getElementById('f-wh').value = String(me.warehouse_id);
-              } else if (t.assignments && t.assignments.length === 1) {
-                document.getElementById('f-wh').value = String(t.assignments[0].warehouse_id);
-              }
-              document.getElementById('modal').style.display = 'flex';
-            });
+        var toolId = Number(id);
+        var t = toolsCache.find(function (x) { return Number(x.id) === toolId; });
+        if (!t) {
+          alert('Tool not found. Reload the list and try again.');
+          return;
+        }
+        document.getElementById('modal-title').textContent = 'Edit tool';
+        document.getElementById('f-id').value = String(t.id);
+        document.getElementById('f-name').value = t.name || '';
+        document.getElementById('f-barcode').value = t.barcode || '';
+        document.getElementById('f-nfc').value = t.nfc_id || '';
+        document.getElementById('f-desc').value = t.description || '';
+        document.getElementById('f-missing').checked = Number(t.missing_flag) === 1;
+        document.getElementById('f-active').checked = Number(t.is_active) !== 0;
+        document.getElementById('f-image-path').value = t.image || '';
+        document.getElementById('f-image-file').value = '';
+        document.getElementById('f-remove-image').checked = false;
+        document.getElementById('f-image-status').textContent = t.image ? 'Picture on file.' : '';
+        document.getElementById('f-stock').value = t.stock_qty != null ? String(t.stock_qty) : '';
+        loadCategories().then(function () {
+          document.getElementById('f-cat').value = t.category_id ? String(t.category_id) : '';
+          loadWarehouses(function () {
+            if (t.stock_qty != null && me.warehouse_id) {
+              document.getElementById('f-wh').value = String(me.warehouse_id);
+            } else if (t.assignments && t.assignments.length === 1) {
+              document.getElementById('f-wh').value = String(t.assignments[0].warehouse_id);
+            } else if (t.assignments && t.assignments.length > 1) {
+              document.getElementById('f-wh').value = String(t.assignments[0].warehouse_id);
+            }
+            document.getElementById('modal').style.display = 'flex';
           });
         });
       }

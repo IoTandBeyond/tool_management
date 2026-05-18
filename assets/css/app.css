@@ -144,6 +144,46 @@ textarea {
   font: inherit;
 }
 
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+input[type="file"] {
+  width: 100%;
+  max-width: 100%;
+  padding: 0.5rem 0;
+  border: none;
+  background: transparent;
+}
+
+label.label-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+label.label-check span {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.form-fieldset-catalog label.label-check:first-of-type {
+  margin-top: 0.25rem;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
