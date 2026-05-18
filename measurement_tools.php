@@ -112,7 +112,7 @@
   <script src="assets/js/api.js"></script>
   <script>
     (function () {
-      var me = { role: '', company_id: null, warehouse_id: null, measurement_company_id: 2 };
+      var me = { role: '', company_id: null, warehouse_id: null, measurement_company_id: 2, show_measurement_nav: false };
       var toolsCache = [];
 
       function companyId() {
@@ -120,8 +120,7 @@
       }
 
       function canAccess() {
-        if (me.role === 'super_admin') return true;
-        return Number(me.company_id) === Number(me.measurement_company_id);
+        return !!me.show_measurement_nav;
       }
 
       function esc(s) {
@@ -398,6 +397,7 @@
         me.company_id = data.company_id;
         me.warehouse_id = data.warehouse_id;
         me.measurement_company_id = data.measurement_company_id || 2;
+        me.show_measurement_nav = !!data.show_measurement_nav;
         if (!canAccess()) {
           window.location.href = 'dashboard.php';
           return;

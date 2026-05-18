@@ -10,10 +10,9 @@ function tmInitNav() {
     if (role === 'super_admin' || role === 'admin') {
       if (el('nav-warehouses')) el('nav-warehouses').style.display = '';
     }
-    var measurementCoId = 2;
-    if (d.measurement_company_id) measurementCoId = parseInt(d.measurement_company_id, 10);
-    var showMeasurement = role === 'super_admin' || (d.company_id && parseInt(d.company_id, 10) === measurementCoId);
-    if (showMeasurement && el('nav-measurement')) el('nav-measurement').style.display = '';
+    if (d.show_measurement_nav && el('nav-measurement')) {
+      el('nav-measurement').style.display = 'inline';
+    }
     if (role === 'super_admin' || role === 'admin') {
       if (el('nav-users')) el('nav-users').style.display = '';
     }

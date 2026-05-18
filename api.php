@@ -540,6 +540,7 @@ switch ($action) {
             'company_id' => $u['company_id'],
             'warehouse_id' => $u['warehouse_id'],
             'measurement_company_id' => tm_measurement_company_id(),
+            'show_measurement_nav' => tm_user_can_access_measurement($u),
         ]);
     }
 

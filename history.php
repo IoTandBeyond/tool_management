@@ -297,8 +297,7 @@
       ensureAuth().then(function (ok) {
         if (!ok) return;
         tmApi('me', {}, true).then(function (m) {
-          var mid = m.measurement_company_id || 2;
-          if (m.role === 'super_admin' || (m.company_id && parseInt(m.company_id, 10) === parseInt(mid, 10))) {
+          if (m.show_measurement_nav) {
             document.getElementById('tab-r6').style.display = '';
           }
         });

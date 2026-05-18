@@ -76,6 +76,23 @@ function tm_measurement_company_id(): int
     return (int) ($config['measurement_company_id'] ?? 2);
 }
 
+/**
+ * @param array{role:string,company_id:?int,warehouse_id:?int} $user
+ */
+function tm_user_can_access_measurement(array $user): bool
+{
+    if ($user['role'] === 'super_admin') {
+        return true;
+    }
+    if (!in_array($user['role'], ['admin', 'manager'], true)) {
+        return false;
+    }
+    if ($user['company_id'] === null) {
+        return false;
+    }
+    return (int) $user['company_id'] === tm_measurement_company_id();
+}
+
 /** @param array<string, mixed> $tool */
 function tm_tool_is_returnable(array $tool): bool
 {
