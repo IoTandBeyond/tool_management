@@ -9,6 +9,7 @@ $active = $active ?? '';
   <div>
     <a href="dashboard.php" class="<?= $active === 'dashboard' ? 'active' : '' ?>">Dashboard</a>
     <a href="companies.php" id="nav-companies" class="<?= $active === 'companies' ? 'active' : '' ?>" style="display:none">Companies</a>
+    <a href="import_tools.php" id="nav-import" class="<?= $active === 'import' ? 'active' : '' ?>" style="display:none">Import tools</a>
     <a href="warehouses.php" id="nav-warehouses" class="<?= $active === 'warehouses' ? 'active' : '' ?>" style="display:none">Warehouses</a>
     <a href="users.php" id="nav-users" class="<?= $active === 'users' ? 'active' : '' ?>" style="display:none">Users</a>
     <a href="tools.php" class="<?= $active === 'tools' ? 'active' : '' ?>">Tools</a>

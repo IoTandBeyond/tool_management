@@ -37,3 +37,21 @@ async function tmUploadToolImage(file) {
   });
   return res.json();
 }
+
+/** Super admin only — import tools from CSV/XLSX */
+async function tmUploadToolsImport(file, companyId, assetType) {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('company_id', String(companyId));
+  fd.append('asset_type', assetType);
+  const res = await fetch('api.php?action=tools_import', {
+    method: 'POST',
+    credentials: 'same-origin',
+    body: fd,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok && !data.error) {
+    throw new Error(res.statusText || 'Import failed');
+  }
+  return data;
+}

@@ -5,7 +5,8 @@ function tmInitNav() {
     var role = d.role;
     var el = function (id) { return document.getElementById(id); };
     if (role === 'super_admin') {
-      if (el('nav-companies')) el('nav-companies').style.display = '';
+      if (el('nav-companies')) el('nav-companies').style.display = 'inline';
+      if (el('nav-import')) el('nav-import').style.display = 'inline';
     }
     if (role === 'super_admin' || role === 'admin') {
       if (el('nav-warehouses')) el('nav-warehouses').style.display = '';

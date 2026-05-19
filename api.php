@@ -1562,6 +1562,68 @@ switch ($action) {
         tm_json_response(['ok' => true, 'rows' => $stmt->fetchAll()]);
     }
 
+    case 'tools_import_template': {
+        tm_require_roles(['super_admin']);
+        $assetType = trim((string) ($_GET['asset_type'] ?? $input['asset_type'] ?? 'consumable'));
+        if (!in_array($assetType, ['consumable', 'measurement'], true)) {
+            tm_json_response(['ok' => false, 'error' => 'asset_type must be consumable or measurement'], 400);
+        }
+        $headers = tm_import_template_headers($assetType);
+        $example = tm_import_template_example($assetType);
+        $filename = tm_import_template_filename($assetType);
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-store');
+        $out = fopen('php://output', 'wb');
+        if ($out === false) {
+            tm_json_response(['ok' => false, 'error' => 'Cannot write template'], 500);
+        }
+        fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, $headers);
+        fputcsv($out, $example);
+        fclose($out);
+        exit;
+    }
+
+    case 'tools_import': {
+        $u = tm_require_roles(['super_admin']);
+        if (empty($_FILES['file']) || !is_array($_FILES['file'])) {
+            tm_json_response(['ok' => false, 'error' => 'No file uploaded'], 400);
+        }
+        $f = $_FILES['file'];
+        if (($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            tm_json_response(['ok' => false, 'error' => 'Upload failed'], 400);
+        }
+        $tmp = (string) ($f['tmp_name'] ?? '');
+        $orig = (string) ($f['name'] ?? 'import.csv');
+        if ($tmp === '' || !is_uploaded_file($tmp)) {
+            tm_json_response(['ok' => false, 'error' => 'Invalid upload'], 400);
+        }
+        $companyId = (int) ($_POST['company_id'] ?? $input['company_id'] ?? 0);
+        $assetType = trim((string) ($_POST['asset_type'] ?? $input['asset_type'] ?? 'consumable'));
+        if ($companyId < 1) {
+            tm_json_response(['ok' => false, 'error' => 'company_id required'], 400);
+        }
+        if (!in_array($assetType, ['consumable', 'measurement'], true)) {
+            tm_json_response(['ok' => false, 'error' => 'asset_type must be consumable or measurement'], 400);
+        }
+        try {
+            $rows = tm_spreadsheet_to_rows($tmp, $orig);
+            $result = tm_import_tools_from_spreadsheet($pdo, $rows, $companyId, $assetType, (int) $u['id']);
+        } catch (InvalidArgumentException $e) {
+            tm_json_response(['ok' => false, 'error' => $e->getMessage()], 400);
+        } catch (Throwable $e) {
+            tm_json_response(['ok' => false, 'error' => $e->getMessage()], 400);
+        }
+        tm_log_activity('import', 'Tools imported from spreadsheet', [
+            'company_id' => $companyId,
+            'asset_type' => $assetType,
+            'imported' => $result['imported'],
+            'skipped' => $result['skipped'],
+        ], $companyId);
+        tm_json_response(['ok' => true] + $result);
+    }
+
     default:
         tm_json_response(['ok' => false, 'error' => 'Unknown action'], 400);
 }

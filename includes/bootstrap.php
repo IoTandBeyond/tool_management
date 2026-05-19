@@ -9,3 +9,4 @@ $GLOBALS['config'] = $config;
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/scope.php';
+require_once __DIR__ . '/tool_import.php';
