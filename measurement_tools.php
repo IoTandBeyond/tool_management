@@ -142,6 +142,7 @@
       var me = { role: '', company_id: null, warehouse_id: null, measurement_company_id: 2, show_measurement_nav: false };
       var toolsCache = [];
       var categoriesCache = [];
+      var editingTool = null;
 
       function companyId() {
         return me.measurement_company_id;
@@ -319,6 +320,7 @@
       }
 
       function openAdd() {
+        editingTool = null;
         document.getElementById('modal-title').textContent = 'Add equipment';
         document.getElementById('f-id').value = '';
         ['f-name', 'f-barcode', 'f-nfc', 'f-uom', 'f-range', 'f-brand', 'f-condition', 'f-location', 'f-last-maint'].forEach(function (id) {
@@ -339,6 +341,7 @@
       function openEdit(id) {
         var t = toolsCache.find(function (x) { return Number(x.id) === Number(id); });
         if (!t) { alert('Not found'); return; }
+        editingTool = t;
         document.getElementById('modal-title').textContent = 'Edit equipment';
         document.getElementById('f-id').value = String(t.id);
         document.getElementById('f-name').value = t.name || '';
@@ -354,13 +357,11 @@
         document.getElementById('f-active').checked = Number(t.is_active) !== 0;
         document.getElementById('f-image-path').value = t.image || '';
         document.getElementById('f-image-status').textContent = t.image ? 'Picture on file.' : '';
-        document.getElementById('f-stock').value = t.stock_qty != null ? String(t.stock_qty) : '';
         loadWarehouses(function () {
-          if (t.assignments && t.assignments.length) {
-            document.getElementById('f-wh').value = String(t.assignments[0].warehouse_id);
-          } else if (me.warehouse_id) {
-            document.getElementById('f-wh').value = String(me.warehouse_id);
-          }
+          var whSel = document.getElementById('f-wh');
+          var defaultWh = tmDefaultEditWarehouseId(t, me.warehouse_id);
+          if (defaultWh) whSel.value = defaultWh;
+          tmApplyEditStockFields(t, whSel, document.getElementById('f-stock'));
           document.getElementById('modal').style.display = 'flex';
         });
       }
@@ -390,6 +391,11 @@
         return payload;
       }
 
+      document.getElementById('f-wh').addEventListener('change', function () {
+        if (editingTool) {
+          tmApplyEditStockFields(editingTool, document.getElementById('f-wh'), document.getElementById('f-stock'));
+        }
+      });
       document.getElementById('btn-add').addEventListener('click', openAdd);
       document.getElementById('f-close').addEventListener('click', function () {
         document.getElementById('modal').style.display = 'none';

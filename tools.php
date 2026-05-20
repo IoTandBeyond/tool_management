@@ -124,6 +124,7 @@
       var me = { role: '', company_id: null, warehouse_id: null };
       var toolsCache = [];
       var categoriesCache = [];
+      var editingTool = null;
 
       function companyId() {
         if (me.role === 'super_admin') {
@@ -301,6 +302,7 @@
       }
 
       function openAdd() {
+        editingTool = null;
         document.getElementById('modal-title').textContent = 'Add tool';
         document.getElementById('f-id').value = '';
         document.getElementById('f-name').value = '';
@@ -325,6 +327,7 @@
           alert('Tool not found. Reload the list and try again.');
           return;
         }
+        editingTool = t;
         document.getElementById('modal-title').textContent = 'Edit tool';
         document.getElementById('f-id').value = String(t.id);
         document.getElementById('f-name').value = t.name || '';
@@ -337,22 +340,23 @@
         document.getElementById('f-image-file').value = '';
         document.getElementById('f-remove-image').checked = false;
         document.getElementById('f-image-status').textContent = t.image ? 'Picture on file.' : '';
-        document.getElementById('f-stock').value = t.stock_qty != null ? String(t.stock_qty) : '';
         loadCategories().then(function () {
           document.getElementById('f-cat').value = t.category_id ? String(t.category_id) : '';
           loadWarehouses(function () {
-            if (t.stock_qty != null && me.warehouse_id) {
-              document.getElementById('f-wh').value = String(me.warehouse_id);
-            } else if (t.assignments && t.assignments.length === 1) {
-              document.getElementById('f-wh').value = String(t.assignments[0].warehouse_id);
-            } else if (t.assignments && t.assignments.length > 1) {
-              document.getElementById('f-wh').value = String(t.assignments[0].warehouse_id);
-            }
+            var whSel = document.getElementById('f-wh');
+            var defaultWh = tmDefaultEditWarehouseId(t, me.warehouse_id);
+            if (defaultWh) whSel.value = defaultWh;
+            tmApplyEditStockFields(t, whSel, document.getElementById('f-stock'));
             document.getElementById('modal').style.display = 'flex';
           });
         });
       }
 
+      document.getElementById('f-wh').addEventListener('change', function () {
+        if (editingTool) {
+          tmApplyEditStockFields(editingTool, document.getElementById('f-wh'), document.getElementById('f-stock'));
+        }
+      });
       document.getElementById('btn-add').addEventListener('click', openAdd);
       document.getElementById('btn-company-apply').addEventListener('click', function () {
         document.getElementById('list-search').value = '';

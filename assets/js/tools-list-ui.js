@@ -166,3 +166,46 @@ function tmToolsListView(config) {
     }
   };
 }
+
+/**
+ * Stock quantity for a tool at a warehouse (from assignments[] or manager list stock_qty).
+ */
+function tmStockQtyForWarehouse(tool, warehouseId) {
+  if (!tool) return null;
+  var wid = warehouseId ? Number(warehouseId) : 0;
+  var assignments = tool.assignments || [];
+  if (assignments.length) {
+    if (wid) {
+      for (var i = 0; i < assignments.length; i++) {
+        if (Number(assignments[i].warehouse_id) === wid) {
+          return assignments[i].stock_qty;
+        }
+      }
+    }
+    return assignments[0].stock_qty;
+  }
+  if (tool.stock_qty !== undefined && tool.stock_qty !== null) {
+    return tool.stock_qty;
+  }
+  return null;
+}
+
+/** Default warehouse select value when opening edit. */
+function tmDefaultEditWarehouseId(tool, managerWarehouseId) {
+  if (!tool) return managerWarehouseId ? String(managerWarehouseId) : '';
+  if (tool.stock_qty != null && managerWarehouseId) {
+    return String(managerWarehouseId);
+  }
+  var a = tool.assignments || [];
+  if (a.length) return String(a[0].warehouse_id);
+  if (managerWarehouseId) return String(managerWarehouseId);
+  return '';
+}
+
+/** Fill stock input from tool + selected warehouse. */
+function tmApplyEditStockFields(tool, warehouseSelect, stockInput) {
+  if (!tool || !stockInput) return;
+  var whId = warehouseSelect ? warehouseSelect.value : '';
+  var sq = tmStockQtyForWarehouse(tool, whId);
+  stockInput.value = sq != null && sq !== '' ? String(sq) : '';
+}
