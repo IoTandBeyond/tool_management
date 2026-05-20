@@ -19,6 +19,25 @@
     <div class="row-actions" style="margin-bottom: 1rem;">
       <button type="button" class="btn btn-primary" id="btn-add">Add equipment</button>
     </div>
+    <div class="tools-list-toolbar">
+      <div class="tools-list-search">
+        <label for="list-search">Search</label>
+        <input type="search" id="list-search" placeholder="Name, barcode, NFC, brand, location…" autocomplete="off">
+      </div>
+      <div>
+        <label for="list-category">Category</label>
+        <select id="list-category"><option value="">All categories</option></select>
+      </div>
+      <div>
+        <label for="list-page-size">Rows per page</label>
+        <select id="list-page-size">
+          <option value="15" selected>15</option>
+          <option value="30">30</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+    </div>
+    <p class="sub" id="list-meta" style="margin: 0 0 0.75rem;"></p>
     <div class="card" style="overflow-x: auto;">
       <table>
         <thead>
@@ -37,6 +56,13 @@
         </thead>
         <tbody id="tbody"></tbody>
       </table>
+    </div>
+    <div class="tools-list-pager">
+      <p class="sub" id="list-page-info" style="margin: 0;"></p>
+      <div class="row-actions">
+        <button type="button" class="btn btn-secondary" id="list-prev">Previous</button>
+        <button type="button" class="btn btn-secondary" id="list-next">Next</button>
+      </div>
     </div>
   </div>
 
@@ -110,10 +136,12 @@
   </div>
 
   <script src="assets/js/api.js"></script>
+  <script src="assets/js/tools-list-ui.js"></script>
   <script>
     (function () {
       var me = { role: '', company_id: null, warehouse_id: null, measurement_company_id: 2, show_measurement_nav: false };
       var toolsCache = [];
+      var categoriesCache = [];
 
       function companyId() {
         return me.measurement_company_id;
@@ -200,12 +228,28 @@
         });
       }
 
-      function loadTools() {
-        tmApi('tools_list', { company_id: companyId(), asset_type: 'measurement' }, true).then(function (data) {
-          toolsCache = data.tools || [];
-          var tb = document.getElementById('tbody');
-          tb.innerHTML = '';
-          toolsCache.forEach(function (t) {
+      function loadCategories() {
+        return tmApi('categories_list', { company_id: companyId() }, true).then(function (data) {
+          categoriesCache = data.categories || [];
+          listView.populateCategories(categoriesCache);
+        });
+      }
+
+      var listView = tmToolsListView({
+        getItems: function () { return toolsCache; },
+        emptyColSpan: 10,
+        elements: {
+          tbody: document.getElementById('tbody'),
+          search: document.getElementById('list-search'),
+          category: document.getElementById('list-category'),
+          pageSize: document.getElementById('list-page-size'),
+          btnPrev: document.getElementById('list-prev'),
+          btnNext: document.getElementById('list-next'),
+          meta: document.getElementById('list-meta'),
+          pageInfo: document.getElementById('list-page-info')
+        },
+        renderRows: function (items, tbody) {
+          items.forEach(function (t) {
             var tr = document.createElement('tr');
             tr.innerHTML =
               photoCell(t) +
@@ -218,9 +262,18 @@
               stockCell(t) +
               catalogCell(t) +
               actionsCell(t);
-            tb.appendChild(tr);
+            tbody.appendChild(tr);
           });
-          bindTableActions();
+        },
+        afterRender: function () { bindTableActions(); }
+      });
+      listView.wire();
+
+      function loadTools() {
+        tmApi('tools_list', { company_id: companyId(), asset_type: 'measurement' }, true).then(function (data) {
+          toolsCache = data.tools || [];
+          listView.resetPage();
+          listView.render();
         });
       }
 
@@ -402,7 +455,7 @@
           window.location.href = 'dashboard.php';
           return;
         }
-        loadTools();
+        loadCategories().then(loadTools);
       });
     })();
   </script>

@@ -1,0 +1,168 @@
+/**
+ * Client-side search, category filter, and pagination for tools / measurement tables.
+ */
+function tmToolsListView(config) {
+  var state = {
+    page: 1,
+    pageSize: 15,
+    search: '',
+    categoryFilter: ''
+  };
+
+  function getItems() {
+    return config.getItems() || [];
+  }
+
+  function matchesSearch(t, q) {
+    if (!q) return true;
+    var parts = [
+      t.name,
+      t.barcode,
+      t.nfc_id,
+      t.description,
+      t.category_name,
+      t.warehouse_name,
+      t.brand_model,
+      t.location,
+      t.uom,
+      t.range_spec,
+      t.tool_condition
+    ];
+    var hay = parts
+      .filter(function (p) { return p != null && String(p).trim() !== ''; })
+      .join(' ')
+      .toLowerCase();
+    return hay.indexOf(q) !== -1;
+  }
+
+  function matchesCategory(t) {
+    var cat = state.categoryFilter;
+    if (cat === '') return true;
+    if (cat === '__none__') {
+      return t.category_id == null || t.category_id === '' || Number(t.category_id) === 0;
+    }
+    return String(t.category_id || '') === String(cat);
+  }
+
+  function getFiltered() {
+    var q = state.search.trim().toLowerCase();
+    return getItems().filter(function (t) {
+      return matchesCategory(t) && matchesSearch(t, q);
+    });
+  }
+
+  function render() {
+    var tbody = config.elements.tbody;
+    if (!tbody) return;
+
+    var filtered = getFiltered();
+    var total = filtered.length;
+    var size = state.pageSize;
+    var pages = total > 0 ? Math.ceil(total / size) : 1;
+    if (state.page > pages) state.page = pages;
+    if (state.page < 1) state.page = 1;
+
+    var start = (state.page - 1) * size;
+    var slice = filtered.slice(start, start + size);
+
+    tbody.innerHTML = '';
+    if (!total) {
+      var colSpan = config.emptyColSpan || 8;
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="' + colSpan + '" class="sub" style="text-align:center;padding:1.5rem;">No items match your search or filter.</td>';
+      tbody.appendChild(tr);
+    } else {
+      config.renderRows(slice, tbody);
+    }
+
+    var el = config.elements;
+    if (el.meta) {
+      el.meta.textContent = total
+        ? 'Showing ' + (start + 1) + '–' + Math.min(start + size, total) + ' of ' + total + ' item(s)'
+        : 'No items to display';
+    }
+    if (el.pageInfo) {
+      el.pageInfo.textContent = total ? 'Page ' + state.page + ' of ' + pages : 'Page 1 of 1';
+    }
+    if (el.btnPrev) el.btnPrev.disabled = state.page <= 1;
+    if (el.btnNext) el.btnNext.disabled = state.page >= pages;
+
+    if (typeof config.afterRender === 'function') {
+      config.afterRender(slice);
+    }
+  }
+
+  function wire() {
+    var el = config.elements;
+    if (el.search) {
+      el.search.addEventListener('input', function () {
+        state.search = el.search.value;
+        state.page = 1;
+        render();
+      });
+    }
+    if (el.category) {
+      el.category.addEventListener('change', function () {
+        state.categoryFilter = el.category.value;
+        state.page = 1;
+        render();
+      });
+    }
+    if (el.pageSize) {
+      el.pageSize.addEventListener('change', function () {
+        state.pageSize = parseInt(el.pageSize.value, 10) || 15;
+        state.page = 1;
+        render();
+      });
+    }
+    if (el.btnPrev) {
+      el.btnPrev.addEventListener('click', function () {
+        if (state.page > 1) {
+          state.page--;
+          render();
+        }
+      });
+    }
+    if (el.btnNext) {
+      el.btnNext.addEventListener('click', function () {
+        var filtered = getFiltered();
+        var pages = filtered.length > 0 ? Math.ceil(filtered.length / state.pageSize) : 1;
+        if (state.page < pages) {
+          state.page++;
+          render();
+        }
+      });
+    }
+  }
+
+  function populateCategories(categories) {
+    var sel = config.elements.category;
+    if (!sel) return;
+    var cur = sel.value;
+    sel.innerHTML = '';
+    var all = document.createElement('option');
+    all.value = '';
+    all.textContent = 'All categories';
+    sel.appendChild(all);
+    var none = document.createElement('option');
+    none.value = '__none__';
+    none.textContent = 'Uncategorized';
+    sel.appendChild(none);
+    (categories || []).forEach(function (c) {
+      var o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = c.name;
+      sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+  }
+
+  return {
+    render: render,
+    wire: wire,
+    populateCategories: populateCategories,
+    resetPage: function () {
+      state.page = 1;
+    }
+  };
+}
