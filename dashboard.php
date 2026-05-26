@@ -29,16 +29,38 @@
         <h2>Recent activity</h2>
         <div id="feed"></div>
       </div>
-      <div class="card">
-        <h2>Quick links</h2>
-        <p class="sub"><a href="tools.php">Manage tools</a> · <a href="operators.php">Manage operators</a> · <a href="history.php">History &amp; reports</a></p>
-        <p class="sub">Kiosk: <a href="index.php" target="_blank" rel="noopener">Open operator screen</a></p>
+      <div class="card dashboard-charts-card">
+        <h2>Inventory by category</h2>
+        <p class="sub">Total stock units per category (active tools).</p>
+        <div class="chart-wrap chart-wrap--pie">
+          <canvas id="chart-category-pie" aria-label="Tools and equipment by category"></canvas>
+        </div>
+        <h2 class="dashboard-charts-heading">Checkouts this month</h2>
+        <p class="sub" id="chart-month-label"></p>
+        <div class="chart-wrap chart-wrap--line">
+          <canvas id="chart-monthly-borrow" aria-label="Daily checkouts this month"></canvas>
+        </div>
       </div>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
   <script src="assets/js/api.js"></script>
   <script>
     (function () {
+      var pieChart = null;
+      var lineChart = null;
+      var PIE_COLORS = ['#3d9eff', '#22c55e', '#f59e0b', '#a78bfa', '#f472b6', '#14b8a6', '#ef4444', '#94a3b8'];
+
+      function chartTheme() {
+        var style = getComputedStyle(document.documentElement);
+        return {
+          text: (style.getPropertyValue('--text') || '#e8eaed').trim(),
+          muted: (style.getPropertyValue('--muted') || '#9aa0a6').trim(),
+          grid: (style.getPropertyValue('--hairline') || '#3c4043').trim(),
+          accent: (style.getPropertyValue('--accent') || '#3d9eff').trim()
+        };
+      }
+
       function checkAuth() {
         return tmApi('me', {}, true).then(function (data) {
           if (!data.logged_in) {
@@ -79,6 +101,112 @@
         });
       }
 
+      function renderCharts(data) {
+        if (!data.ok || typeof Chart === 'undefined') return;
+        var theme = chartTheme();
+        var pieEl = document.getElementById('chart-category-pie');
+        var lineEl = document.getElementById('chart-monthly-borrow');
+        var categories = data.by_category || [];
+        var pieLabels = categories.map(function (r) { return r.label; });
+        var pieValues = categories.map(function (r) { return Number(r.total) || 0; });
+        var pieColors = pieLabels.map(function (_, i) { return PIE_COLORS[i % PIE_COLORS.length]; });
+
+        if (pieChart) pieChart.destroy();
+        if (!pieLabels.length) {
+          pieLabels.push('No stock');
+          pieValues.push(1);
+          pieColors = [theme.muted];
+        }
+        pieChart = new Chart(pieEl, {
+          type: 'pie',
+          data: {
+            labels: pieLabels,
+            datasets: [{
+              data: pieValues,
+              backgroundColor: pieColors,
+              borderColor: 'transparent'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: theme.text, boxWidth: 12, padding: 10 }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (ctx) {
+                    var v = ctx.parsed || 0;
+                    var sum = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
+                    var pct = sum ? Math.round((v / sum) * 100) : 0;
+                    return ctx.label + ': ' + v + ' (' + pct + '%)';
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        var mb = data.monthly_borrow || {};
+        document.getElementById('chart-month-label').textContent = mb.month_label || '';
+
+        if (lineChart) lineChart.destroy();
+        lineChart = new Chart(lineEl, {
+          type: 'line',
+          data: {
+            labels: mb.labels || [],
+            datasets: [
+              {
+                label: 'Tools (consumables)',
+                data: mb.consumable || [],
+                borderColor: theme.accent,
+                backgroundColor: theme.accent + '33',
+                tension: 0.25,
+                fill: false,
+                pointRadius: 2
+              },
+              {
+                label: 'Measurement equipment',
+                data: mb.measurement || [],
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                tension: 0.25,
+                fill: false,
+                pointRadius: 2
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                title: { display: true, text: 'Day of month', color: theme.muted },
+                ticks: { color: theme.muted, maxTicksLimit: 16 },
+                grid: { color: theme.grid }
+              },
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Checkouts', color: theme.muted },
+                ticks: { color: theme.muted, precision: 0 },
+                grid: { color: theme.grid }
+              }
+            },
+            plugins: {
+              legend: {
+                labels: { color: theme.text }
+              }
+            }
+          }
+        });
+      }
+
+      function loadCharts() {
+        tmApi('dashboard_charts', {}, true).then(renderCharts);
+      }
+
       function escapeHtml(s) {
         var d = document.createElement('div');
         d.textContent = s;
@@ -96,9 +224,11 @@
         if (!ok) return;
         loadStats();
         loadFeed();
+        loadCharts();
         setInterval(function () {
           loadStats();
           loadFeed();
+          loadCharts();
         }, 20000);
       });
     })();

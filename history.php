@@ -57,10 +57,12 @@
           <input type="date" id="flt-to">
         </div>
       </div>
+      <br>
       <div class="row-actions history-filters-actions">
         <button type="button" class="btn btn-primary" id="btn-apply">Apply filters</button>
         <button type="button" class="btn btn-secondary" id="btn-clear-filters">Clear filters</button>
       </div>
+      <br>
       <div style="overflow-x: auto; margin-top: 1rem;">
         <table>
           <thead>

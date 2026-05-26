@@ -452,6 +452,90 @@ switch ($action) {
         ]);
     }
 
+    case 'dashboard_charts': {
+        $u = tm_require_roles(['super_admin', 'admin', 'manager']);
+        [$toolScope, $toolParams] = tm_sql_scope_tools_catalog($u);
+        $twaJoin = 'LEFT JOIN tool_warehouse_assignment twa ON twa.tool_id = t.id AND twa.deleted_flag = 0';
+        $twaParams = [];
+        if ($u['role'] === 'manager' && $u['warehouse_id']) {
+            $twaJoin .= ' AND twa.warehouse_id = ?';
+            $twaParams[] = $u['warehouse_id'];
+        }
+        $pieStmt = $pdo->prepare(
+            "SELECT CASE WHEN t.asset_type = 'measurement' THEN 'Measurement equipment'
+                    WHEN c.name IS NULL OR TRIM(c.name) = '' THEN 'Uncategorized'
+                    ELSE c.name END AS label,
+                    COALESCE(SUM(twa.stock_qty), 0) AS total
+             FROM tools t
+             LEFT JOIN categories c ON c.id = t.category_id AND c.company_id = t.company_id
+             {$twaJoin}
+             WHERE t.is_active = 1 AND {$toolScope}
+             GROUP BY label
+             HAVING total > 0
+             ORDER BY total DESC, label ASC"
+        );
+        $pieStmt->execute(array_merge($twaParams, $toolParams));
+        $byCategory = $pieStmt->fetchAll();
+
+        $year = (int) ($input['year'] ?? (int) date('Y'));
+        $month = (int) ($input['month'] ?? (int) date('n'));
+        if ($month < 1 || $month > 12) {
+            $month = (int) date('n');
+        }
+        if ($year < 2000 || $year > 2100) {
+            $year = (int) date('Y');
+        }
+        $monthStart = sprintf('%04d-%02d-01 00:00:00', $year, $month);
+        $nextMonth = $month === 12 ? [$year + 1, 1] : [$year, $month + 1];
+        $monthEnd = sprintf('%04d-%02d-01 00:00:00', $nextMonth[0], $nextMonth[1]);
+
+        [$txScope, $txParams] = tm_sql_scope_transactions($u);
+        $borrowStmt = $pdo->prepare(
+            "SELECT DATE(tr.checkout_at) AS day,
+                    SUM(CASE WHEN tl.asset_type = 'consumable' THEN 1 ELSE 0 END) AS consumable_count,
+                    SUM(CASE WHEN tl.asset_type = 'measurement' THEN 1 ELSE 0 END) AS measurement_count
+             FROM transactions tr
+             INNER JOIN tools tl ON tl.id = tr.tool_id
+             WHERE {$txScope} AND tr.checkout_at >= ? AND tr.checkout_at < ?
+             GROUP BY DATE(tr.checkout_at)
+             ORDER BY day ASC"
+        );
+        $borrowStmt->execute(array_merge($txParams, [$monthStart, $monthEnd]));
+        $borrowRows = $borrowStmt->fetchAll();
+        $borrowByDay = [];
+        foreach ($borrowRows as $row) {
+            $borrowByDay[(string) $row['day']] = [
+                'consumable' => (int) $row['consumable_count'],
+                'measurement' => (int) $row['measurement_count'],
+            ];
+        }
+
+        $daysInMonth = (int) date('t', strtotime($monthStart));
+        $labels = [];
+        $consumableSeries = [];
+        $measurementSeries = [];
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $dayKey = sprintf('%04d-%02d-%02d', $year, $month, $d);
+            $labels[] = (string) $d;
+            $counts = $borrowByDay[$dayKey] ?? ['consumable' => 0, 'measurement' => 0];
+            $consumableSeries[] = $counts['consumable'];
+            $measurementSeries[] = $counts['measurement'];
+        }
+
+        tm_json_response([
+            'ok' => true,
+            'by_category' => $byCategory,
+            'monthly_borrow' => [
+                'year' => $year,
+                'month' => $month,
+                'month_label' => date('F Y', strtotime($monthStart)),
+                'labels' => $labels,
+                'consumable' => $consumableSeries,
+                'measurement' => $measurementSeries,
+            ],
+        ]);
+    }
+
     case 'activity_feed': {
         $u = tm_require_roles(['super_admin', 'admin', 'manager']);
         $limit = min(50, max(1, (int) ($input['limit'] ?? 20)));

@@ -476,6 +476,26 @@ html[data-theme="light"] .theme-icon--moon {
   }
 }
 
+.dashboard-charts-card .dashboard-charts-heading {
+  margin-top: 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.chart-wrap--pie {
+  height: 260px;
+  margin-top: 0.5rem;
+}
+
+.chart-wrap--line {
+  height: 220px;
+  margin-top: 0.5rem;
+}
+
 .history-filters-actions {
   margin-bottom: 1rem;
 }
