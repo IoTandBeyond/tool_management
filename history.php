@@ -16,7 +16,6 @@
   <div class="wrap">
     <h1>History &amp; reports</h1>
     <p class="sub">Filter transactions and open analytics tabs.</p>
-
     <div class="tabs">
       <button type="button" class="tab active" data-tab="history">Transaction history</button>
       <button type="button" class="tab" data-tab="r1">Out per operator</button>
@@ -29,10 +28,7 @@
 
     <div id="panel-history" class="card">
       <h2>Filters</h2>
-      <div class="row-actions history-filters-actions">
-        <button type="button" class="btn btn-primary" id="btn-apply">Apply filters</button>
-        <button type="button" class="btn btn-secondary" id="btn-clear-filters">Clear filters</button>
-      </div>
+      
       <div class="history-filter-row">
         <div>
           <label for="flt-op">Operator</label>
@@ -43,6 +39,16 @@
           <select id="flt-tool"><option value="">All</option></select>
         </div>
         <div>
+          <label for="flt-category">Category</label>
+          <select id="flt-category">
+            <option value="">All</option>
+            <option value="epp">EPP</option>
+            <option value="insumos">Insumos</option>
+            <option value="stqmk">STQMK</option>
+            <option value="measurement">Measurement equipment</option>
+          </select>
+        </div>
+        <div>
           <label for="flt-from">From</label>
           <input type="date" id="flt-from">
         </div>
@@ -50,6 +56,10 @@
           <label for="flt-to">To</label>
           <input type="date" id="flt-to">
         </div>
+      </div>
+      <div class="row-actions history-filters-actions">
+        <button type="button" class="btn btn-primary" id="btn-apply">Apply filters</button>
+        <button type="button" class="btn btn-secondary" id="btn-clear-filters">Clear filters</button>
       </div>
       <div style="overflow-x: auto; margin-top: 1rem;">
         <table>
@@ -59,6 +69,7 @@
               <th>Return</th>
               <th>Operator</th>
               <th>Tool</th>
+              <th>Category</th>
               <th>Warehouse</th>
               <th>Expected return</th>
             </tr>
@@ -145,6 +156,11 @@
         return d.innerHTML;
       }
 
+      function categoryLabel(r) {
+        if (r.asset_type === 'measurement') return 'Measurement equipment';
+        return r.category_name || '—';
+      }
+
       function fillFilters() {
         tmApi('operators_list', {}, true).then(function (d) {
           var s = document.getElementById('flt-op');
@@ -171,6 +187,7 @@
       function clearFilters() {
         document.getElementById('flt-op').value = '';
         document.getElementById('flt-tool').value = '';
+        document.getElementById('flt-category').value = '';
         document.getElementById('flt-from').value = '';
         document.getElementById('flt-to').value = '';
         loadHistory();
@@ -180,11 +197,13 @@
         var payload = {
           operator_id: document.getElementById('flt-op').value || 0,
           tool_id: document.getElementById('flt-tool').value || 0,
+          category_filter: document.getElementById('flt-category').value || '',
           date_from: document.getElementById('flt-from').value || '',
           date_to: document.getElementById('flt-to').value || ''
         };
         if (!payload.operator_id) delete payload.operator_id;
         if (!payload.tool_id) delete payload.tool_id;
+        if (!payload.category_filter) delete payload.category_filter;
         tmApi('history', payload, true).then(function (data) {
           var tb = document.getElementById('hist-body');
           tb.innerHTML = '';
@@ -195,6 +214,7 @@
               '<td>' + (r.checkin_at ? tmFormatDt(r.checkin_at) : '—') + '</td>' +
               '<td>' + esc(r.operator_name) + ' (' + esc(r.employee_id) + ')</td>' +
               '<td>' + esc(r.tool_name) + '</td>' +
+              '<td>' + esc(categoryLabel(r)) + '</td>' +
               '<td>' + esc(r.warehouse_name || '—') + '</td>' +
               '<td>' + (r.asset_type === 'measurement' ? tmFormatDt(r.expected_return_at) : '—') + '</td>';
             tb.appendChild(tr);

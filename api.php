@@ -1289,14 +1289,16 @@ switch ($action) {
         $tool = isset($input['tool_id']) ? (int) $input['tool_id'] : 0;
         $from = trim((string) ($input['date_from'] ?? ''));
         $to = trim((string) ($input['date_to'] ?? ''));
+        $categoryFilter = strtolower(trim((string) ($input['category_filter'] ?? '')));
         $sql = 'SELECT tr.id, tr.checkout_at, tr.checkin_at, tr.expected_return_at, tr.warehouse_id,
                        w.warehouse_name,
                        o.name AS operator_name, o.employee_id,
-                       tl.name AS tool_name, tl.barcode, tl.asset_type
+                       tl.name AS tool_name, tl.barcode, tl.asset_type, c.name AS category_name
                 FROM transactions tr
                 INNER JOIN operators o ON o.id = tr.operator_id
                 INNER JOIN tools tl ON tl.id = tr.tool_id
                 INNER JOIN warehouses w ON w.id = tr.warehouse_id
+                LEFT JOIN categories c ON c.id = tl.category_id AND c.company_id = tl.company_id
                 WHERE ' . $wSql;
         $params = $wParams;
         if ($op > 0) {
@@ -1306,6 +1308,13 @@ switch ($action) {
         if ($tool > 0) {
             $sql .= ' AND tr.tool_id = ?';
             $params[] = $tool;
+        }
+        if ($categoryFilter === 'measurement') {
+            $sql .= " AND tl.asset_type = 'measurement'";
+        } elseif (in_array($categoryFilter, ['epp', 'insumos', 'stqmk'], true)) {
+            $sql .= ' AND tl.asset_type = ? AND LOWER(TRIM(c.name)) = ?';
+            $params[] = 'consumable';
+            $params[] = $categoryFilter;
         }
         if ($from !== '') {
             $sql .= ' AND tr.checkout_at >= ?';
