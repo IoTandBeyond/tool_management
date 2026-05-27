@@ -15,7 +15,7 @@
   <?php require __DIR__ . '/includes/nav.php'; ?>
   <div class="wrap">
     <h1 data-i18n="dashboard.heading">Dashboard</h1>
-    <p class="sub" data-i18n="dashboard.sub">Live summary — refreshes every 20 seconds.</p>
+    <p class="sub" data-i18n="dashboard.sub">Live summary — refreshes every 5 minutess.</p>
 
     <div class="stats-grid" id="stats">
       <div class="stat"><div class="num" id="s-stock">—</div><div class="lbl" data-i18n="dashboard.in_stock">In stock</div></div>
@@ -229,7 +229,7 @@
           loadStats();
           loadFeed();
           loadCharts();
-        }, 20000);
+        }, 300000);
       });
     })();
   </script>

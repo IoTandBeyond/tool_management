@@ -25,8 +25,8 @@
         <input type="search" id="list-search" data-i18n-placeholder="measurement.search_placeholder" autocomplete="off">
       </div>
       <div>
-        <label for="list-category" data-i18n="common.category">Category</label>
-        <select id="list-category"><option value="" data-i18n="common.all_categories">All categories</option></select>
+        <label for="list-location" data-i18n="measurement.filter_location">Location</label>
+        <select id="list-location"><option value="" data-i18n="common.all_locations">All locations</option></select>
       </div>
       <div>
         <label for="list-page-size" data-i18n="common.rows_per_page">Rows per page</label>
@@ -141,7 +141,6 @@
     (function () {
       var me = { role: '', company_id: null, warehouse_id: null, measurement_company_id: 2, show_measurement_nav: false };
       var toolsCache = [];
-      var categoriesCache = [];
       var editingTool = null;
 
       function companyId() {
@@ -229,20 +228,13 @@
         });
       }
 
-      function loadCategories() {
-        return tmApi('categories_list', { company_id: companyId() }, true).then(function (data) {
-          categoriesCache = data.categories || [];
-          listView.populateCategories(categoriesCache);
-        });
-      }
-
       var listView = tmToolsListView({
         getItems: function () { return toolsCache; },
         emptyColSpan: 10,
         elements: {
           tbody: document.getElementById('tbody'),
           search: document.getElementById('list-search'),
-          category: document.getElementById('list-category'),
+          location: document.getElementById('list-location'),
           pageSize: document.getElementById('list-page-size'),
           btnPrev: document.getElementById('list-prev'),
           btnNext: document.getElementById('list-next'),
@@ -269,10 +261,14 @@
         afterRender: function () { bindTableActions(); }
       });
       listView.wire();
+      document.addEventListener('tm-i18n-ready', function () {
+        if (toolsCache.length) listView.populateLocations(toolsCache);
+      });
 
       function loadTools() {
         tmApi('tools_list', { company_id: companyId(), asset_type: 'measurement' }, true).then(function (data) {
           toolsCache = data.tools || [];
+          listView.populateLocations(toolsCache);
           listView.resetPage();
           listView.render();
         });
@@ -461,7 +457,7 @@
           window.location.href = 'dashboard.php';
           return;
         }
-        loadCategories().then(loadTools);
+        loadTools();
       });
     })();
   </script>

@@ -1,12 +1,13 @@
 /**
- * Client-side search, category filter, and pagination for tools / measurement tables.
+ * Client-side search, optional category and/or location filter, and pagination for tools tables.
  */
 function tmToolsListView(config) {
   var state = {
     page: 1,
     pageSize: 15,
     search: '',
-    categoryFilter: ''
+    categoryFilter: '',
+    locationFilter: ''
   };
 
   function getItems() {
@@ -36,6 +37,7 @@ function tmToolsListView(config) {
   }
 
   function matchesCategory(t) {
+    if (!config.elements.category) return true;
     var cat = state.categoryFilter;
     if (cat === '') return true;
     if (cat === '__none__') {
@@ -44,10 +46,29 @@ function tmToolsListView(config) {
     return String(t.category_id || '') === String(cat);
   }
 
+  function toolLocationTrimmed(t) {
+    if (t.location == null) return '';
+    return String(t.location).trim();
+  }
+
+  function matchesLocation(t) {
+    if (!config.elements.location) return true;
+    var loc = state.locationFilter;
+    if (loc === '') return true;
+    var toolLoc = toolLocationTrimmed(t);
+    if (loc === '__none__') return toolLoc === '';
+    try {
+      var decoded = decodeURIComponent(loc);
+      return toolLoc === decoded;
+    } catch (e) {
+      return toolLoc === loc;
+    }
+  }
+
   function getFiltered() {
     var q = state.search.trim().toLowerCase();
     return getItems().filter(function (t) {
-      return matchesCategory(t) && matchesSearch(t, q);
+      return matchesCategory(t) && matchesLocation(t) && matchesSearch(t, q);
     });
   }
 
@@ -113,6 +134,13 @@ function tmToolsListView(config) {
         render();
       });
     }
+    if (el.location) {
+      el.location.addEventListener('change', function () {
+        state.locationFilter = el.location.value;
+        state.page = 1;
+        render();
+      });
+    }
     if (el.pageSize) {
       el.pageSize.addEventListener('change', function () {
         state.pageSize = parseInt(el.pageSize.value, 10) || 15;
@@ -137,6 +165,42 @@ function tmToolsListView(config) {
           render();
         }
       });
+    }
+  }
+
+  function populateLocations(items) {
+    var sel = config.elements.location;
+    if (!sel) return;
+    var cur = sel.value;
+    sel.innerHTML = '';
+    var all = document.createElement('option');
+    all.value = '';
+    all.textContent = typeof tmT === 'function' ? tmT('common.all_locations') : 'All locations';
+    sel.appendChild(all);
+    var none = document.createElement('option');
+    none.value = '__none__';
+    none.textContent = typeof tmT === 'function' ? tmT('common.no_location') : 'No location';
+    sel.appendChild(none);
+    var seen = {};
+    (items || []).forEach(function (t) {
+      var v = toolLocationTrimmed(t);
+      if (v !== '') seen[v] = true;
+    });
+    Object.keys(seen)
+      .sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); })
+      .forEach(function (v) {
+        var o = document.createElement('option');
+        o.value = encodeURIComponent(v);
+        o.textContent = v;
+        sel.appendChild(o);
+      });
+    if (cur) {
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === cur) {
+          sel.value = cur;
+          break;
+        }
+      }
     }
   }
 
@@ -166,6 +230,7 @@ function tmToolsListView(config) {
     render: render,
     wire: wire,
     populateCategories: populateCategories,
+    populateLocations: populateLocations,
     resetPage: function () {
       state.page = 1;
     }
