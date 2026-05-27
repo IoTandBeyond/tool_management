@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?php require __DIR__ . '/includes/theme_head.php'; ?>
-  <title>Measurement equipment</title>
+  <title data-i18n="measurement.title">Measurement equipment</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -14,22 +14,22 @@
 <body>
   <?php require __DIR__ . '/includes/nav.php'; ?>
   <div class="wrap">
-    <h1>Measurement equipment</h1>
-    <p class="sub">Calibrated tools and gauges — must be returned by operators. Send units to external maintenance providers when needed.</p>
+    <h1 data-i18n="measurement.heading">Measurement equipment</h1>
+    <p class="sub" data-i18n="measurement.sub">Calibrated tools and gauges — must be returned by operators. Send units to external maintenance providers when needed.</p>
     <div class="row-actions" style="margin-bottom: 1rem;">
-      <button type="button" class="btn btn-primary" id="btn-add">Add equipment</button>
+      <button type="button" class="btn btn-primary" id="btn-add" data-i18n="measurement.add">Add equipment</button>
     </div>
     <div class="tools-list-toolbar">
       <div class="tools-list-search">
-        <label for="list-search">Search</label>
-        <input type="search" id="list-search" placeholder="Name, barcode, NFC, brand, location…" autocomplete="off">
+        <label for="list-search" data-i18n="common.search">Search</label>
+        <input type="search" id="list-search" data-i18n-placeholder="measurement.search_placeholder" autocomplete="off">
       </div>
       <div>
-        <label for="list-category">Category</label>
-        <select id="list-category"><option value="">All categories</option></select>
+        <label for="list-category" data-i18n="common.category">Category</label>
+        <select id="list-category"><option value="" data-i18n="common.all_categories">All categories</option></select>
       </div>
       <div>
-        <label for="list-page-size">Rows per page</label>
+        <label for="list-page-size" data-i18n="common.rows_per_page">Rows per page</label>
         <select id="list-page-size">
           <option value="15" selected>15</option>
           <option value="30">30</option>
@@ -42,15 +42,15 @@
       <table>
         <thead>
           <tr>
-            <th>Photo</th>
-            <th>Name</th>
-            <th>Barcode</th>
-            <th>UoM</th>
-            <th>Range</th>
-            <th>Brand / model</th>
-            <th>Location</th>
-            <th>Stock</th>
-            <th class="col-catalog">Status</th>
+            <th data-i18n="common.photo">Photo</th>
+            <th data-i18n="common.name">Name</th>
+            <th data-i18n="common.barcode">Barcode</th>
+            <th data-i18n="measurement.uom">UoM</th>
+            <th data-i18n="measurement.range">Range</th>
+            <th data-i18n="measurement.brand_model">Brand / model</th>
+            <th data-i18n="measurement.location">Location</th>
+            <th data-i18n="common.stock">Stock</th>
+            <th class="col-catalog" data-i18n="common.status">Status</th>
             <th></th>
           </tr>
         </thead>
@@ -60,8 +60,8 @@
     <div class="tools-list-pager">
       <p class="sub" id="list-page-info" style="margin: 0;"></p>
       <div class="row-actions">
-        <button type="button" class="btn btn-secondary" id="list-prev">Previous</button>
-        <button type="button" class="btn btn-secondary" id="list-next">Next</button>
+        <button type="button" class="btn btn-secondary" id="list-prev" data-i18n="common.previous">Previous</button>
+        <button type="button" class="btn btn-secondary" id="list-next" data-i18n="common.next">Next</button>
       </div>
     </div>
   </div>

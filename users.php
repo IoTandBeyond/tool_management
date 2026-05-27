@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?php require __DIR__ . '/includes/theme_head.php'; ?>
-  <title>Users</title>
+  <title data-i18n="users.title">Users</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
 <body>
   <?php require __DIR__ . '/includes/nav.php'; ?>
   <div class="wrap">
-    <h1>Staff users</h1>
+    <h1 data-i18n="users.heading">Staff users</h1>
     <p class="sub">Admins and warehouse managers (not kiosk operators — use Operators page).</p>
     <div class="row-actions" style="margin-bottom: 1rem;">
       <button type="button" class="btn btn-primary" id="btn-add">Add user</button>

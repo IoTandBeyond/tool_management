@@ -496,6 +496,42 @@ html[data-theme="light"] .theme-icon--moon {
   margin-top: 0.5rem;
 }
 
+.lang-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.lang-switcher-btn {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.28rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--hairline);
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.lang-switcher-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.lang-switcher-btn.is-active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface2));
+}
+
+.theme-toggle-float .lang-switcher {
+  margin-right: 0.5rem;
+}
+
 .history-filters-actions {
   margin-bottom: 1rem;
 }

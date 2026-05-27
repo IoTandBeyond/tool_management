@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?php require __DIR__ . '/includes/theme_head.php'; ?>
-  <title>Import tools</title>
+  <title data-i18n="import.title">Import tools</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
 <body>
   <?php require __DIR__ . '/includes/nav.php'; ?>
   <div class="wrap">
-    <h1>Import tools</h1>
+    <h1 data-i18n="import.heading">Import tools</h1>
     <p class="sub">Super admin only — bulk import consumable tools or measurement equipment from CSV or Excel (.xlsx).</p>
 
     <div class="card" style="max-width: 640px;">

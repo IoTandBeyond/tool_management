@@ -69,7 +69,8 @@ function tmToolsListView(config) {
     if (!total) {
       var colSpan = config.emptyColSpan || 8;
       var tr = document.createElement('tr');
-      tr.innerHTML = '<td colspan="' + colSpan + '" class="sub" style="text-align:center;padding:1.5rem;">No items match your search or filter.</td>';
+      var emptyMsg = typeof tmT === 'function' ? tmT('common.no_items_match') : 'No items match your search or filter.';
+      tr.innerHTML = '<td colspan="' + colSpan + '" class="sub" style="text-align:center;padding:1.5rem;">' + emptyMsg + '</td>';
       tbody.appendChild(tr);
     } else {
       config.renderRows(slice, tbody);
@@ -78,11 +79,15 @@ function tmToolsListView(config) {
     var el = config.elements;
     if (el.meta) {
       el.meta.textContent = total
-        ? 'Showing ' + (start + 1) + '–' + Math.min(start + size, total) + ' of ' + total + ' item(s)'
-        : 'No items to display';
+        ? (typeof tmT === 'function'
+          ? tmT('common.showing', { from: start + 1, to: Math.min(start + size, total), total: total })
+          : 'Showing ' + (start + 1) + '–' + Math.min(start + size, total) + ' of ' + total + ' item(s)')
+        : (typeof tmT === 'function' ? tmT('common.no_items') : 'No items to display');
     }
     if (el.pageInfo) {
-      el.pageInfo.textContent = total ? 'Page ' + state.page + ' of ' + pages : 'Page 1 of 1';
+      el.pageInfo.textContent = total
+        ? (typeof tmT === 'function' ? tmT('common.page_of', { page: state.page, pages: pages }) : 'Page ' + state.page + ' of ' + pages)
+        : (typeof tmT === 'function' ? tmT('common.page_of', { page: 1, pages: 1 }) : 'Page 1 of 1');
     }
     if (el.btnPrev) el.btnPrev.disabled = state.page <= 1;
     if (el.btnNext) el.btnNext.disabled = state.page >= pages;
@@ -142,11 +147,11 @@ function tmToolsListView(config) {
     sel.innerHTML = '';
     var all = document.createElement('option');
     all.value = '';
-    all.textContent = 'All categories';
+    all.textContent = typeof tmT === 'function' ? tmT('common.all_categories') : 'All categories';
     sel.appendChild(all);
     var none = document.createElement('option');
     none.value = '__none__';
-    none.textContent = 'Uncategorized';
+    none.textContent = typeof tmT === 'function' ? tmT('common.uncategorized') : 'Uncategorized';
     sel.appendChild(none);
     (categories || []).forEach(function (c) {
       var o = document.createElement('option');

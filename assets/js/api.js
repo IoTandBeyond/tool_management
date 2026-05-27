@@ -17,10 +17,11 @@ async function tmApi(action, payload = {}, withCredentials = false) {
 }
 
 function tmFormatDt(iso) {
-  if (!iso) return '—';
+  if (!iso) return typeof tmT === 'function' ? tmT('common.none_dash') : '—';
   try {
     const d = new Date(iso.replace(' ', 'T'));
-    return d.toLocaleString();
+    const lang = typeof tmGetLang === 'function' ? tmGetLang() : 'en';
+    return d.toLocaleString(lang === 'es' ? 'es' : 'en');
   } catch {
     return iso;
   }

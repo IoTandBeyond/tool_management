@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?php require __DIR__ . '/includes/theme_head.php'; ?>
-  <title>Dashboard</title>
+  <title data-i18n="dashboard.title">Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -14,28 +14,28 @@
 <body>
   <?php require __DIR__ . '/includes/nav.php'; ?>
   <div class="wrap">
-    <h1>Dashboard</h1>
-    <p class="sub">Live summary — refreshes every 20 seconds.</p>
+    <h1 data-i18n="dashboard.heading">Dashboard</h1>
+    <p class="sub" data-i18n="dashboard.sub">Live summary — refreshes every 20 seconds.</p>
 
     <div class="stats-grid" id="stats">
-      <div class="stat"><div class="num" id="s-stock">—</div><div class="lbl">In stock</div></div>
-      <div class="stat"><div class="num" id="s-out">—</div><div class="lbl">Checked out</div></div>
-      <div class="stat"><div class="num" id="s-missing">—</div><div class="lbl">Missing</div></div>
-      <div class="stat"><div class="num" id="s-overdue">—</div><div class="lbl">Overdue loans</div></div>
+      <div class="stat"><div class="num" id="s-stock">—</div><div class="lbl" data-i18n="dashboard.in_stock">In stock</div></div>
+      <div class="stat"><div class="num" id="s-out">—</div><div class="lbl" data-i18n="dashboard.checked_out">Checked out</div></div>
+      <div class="stat"><div class="num" id="s-missing">—</div><div class="lbl" data-i18n="dashboard.missing">Missing</div></div>
+      <div class="stat"><div class="num" id="s-overdue">—</div><div class="lbl" data-i18n="dashboard.overdue">Overdue loans</div></div>
     </div>
 
     <div class="grid-2">
       <div class="card">
-        <h2>Recent activity</h2>
+        <h2 data-i18n="dashboard.recent_activity">Recent activity</h2>
         <div id="feed"></div>
       </div>
       <div class="card dashboard-charts-card">
-        <h2>Inventory by category</h2>
-        <p class="sub">Total stock units per category (active tools).</p>
+        <h2 data-i18n="dashboard.chart_category_title">Inventory by category</h2>
+        <p class="sub" data-i18n="dashboard.chart_category_sub">Total stock units per category (active tools).</p>
         <div class="chart-wrap chart-wrap--pie">
           <canvas id="chart-category-pie" aria-label="Tools and equipment by category"></canvas>
         </div>
-        <h2 class="dashboard-charts-heading">Checkouts this month</h2>
+        <h2 class="dashboard-charts-heading" data-i18n="dashboard.chart_borrow_title">Checkouts this month</h2>
         <p class="sub" id="chart-month-label"></p>
         <div class="chart-wrap chart-wrap--line">
           <canvas id="chart-monthly-borrow" aria-label="Daily checkouts this month"></canvas>
@@ -113,7 +113,7 @@
 
         if (pieChart) pieChart.destroy();
         if (!pieLabels.length) {
-          pieLabels.push('No stock');
+          pieLabels.push(typeof tmT === 'function' ? tmT('dashboard.chart_no_stock') : 'No stock');
           pieValues.push(1);
           pieColors = [theme.muted];
         }
@@ -159,7 +159,7 @@
             labels: mb.labels || [],
             datasets: [
               {
-                label: 'Tools (consumables)',
+                label: typeof tmT === 'function' ? tmT('dashboard.chart_tools_line') : 'Tools (consumables)',
                 data: mb.consumable || [],
                 borderColor: theme.accent,
                 backgroundColor: theme.accent + '33',
@@ -168,7 +168,7 @@
                 pointRadius: 2
               },
               {
-                label: 'Measurement equipment',
+                label: typeof tmT === 'function' ? tmT('dashboard.chart_measurement_line') : 'Measurement equipment',
                 data: mb.measurement || [],
                 borderColor: '#f59e0b',
                 backgroundColor: 'rgba(245, 158, 11, 0.2)',
@@ -183,13 +183,13 @@
             maintainAspectRatio: false,
             scales: {
               x: {
-                title: { display: true, text: 'Day of month', color: theme.muted },
+                title: { display: true, text: typeof tmT === 'function' ? tmT('dashboard.chart_day_axis') : 'Day of month', color: theme.muted },
                 ticks: { color: theme.muted, maxTicksLimit: 16 },
                 grid: { color: theme.grid }
               },
               y: {
                 beginAtZero: true,
-                title: { display: true, text: 'Checkouts', color: theme.muted },
+                title: { display: true, text: typeof tmT === 'function' ? tmT('dashboard.chart_checkouts_axis') : 'Checkouts', color: theme.muted },
                 ticks: { color: theme.muted, precision: 0 },
                 grid: { color: theme.grid }
               }

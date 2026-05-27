@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?php require __DIR__ . '/includes/theme_head.php'; ?>
-  <title>Borrow tools</title>
+  <title data-i18n="checkout.title">Borrow tools</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -12,54 +12,55 @@
 </head>
 <body data-home="index.php">
   <div class="theme-toggle-float">
+    <?php require __DIR__ . '/includes/lang_switcher.php'; ?>
     <?php require __DIR__ . '/includes/theme_toggle.php'; ?>
   </div>
   <div class="wrap">
-    <h1>Borrow tools</h1>
+    <h1 data-i18n="checkout.heading">Borrow tools</h1>
     <p class="sub" id="operator-line"></p>
 
     <div id="borrowed-block" class="card" style="margin-bottom: 1rem;">
-      <h2>Currently on loan to you</h2>
-      <p class="sub" id="borrowed-hint" style="display: none;">Tap <strong>Return</strong> on a row, then scan that tool’s barcode or NFC to check it in.</p>
-      <div id="borrowed-empty" class="sub" style="display: none;">No open loans — scan a tool below to borrow.</div>
+      <h2 data-i18n="checkout.on_loan_title">Currently on loan to you</h2>
+      <p class="sub" id="borrowed-hint" style="display: none;" data-i18n-html="1" data-i18n="checkout.on_loan_hint">Tap <strong>Return</strong> on a row, then scan that tool’s barcode or NFC to check it in.</p>
+      <div id="borrowed-empty" class="sub" style="display: none;" data-i18n="checkout.on_loan_empty">No open loans — scan a tool below to borrow.</div>
       <table id="borrowed-table" style="display: none;">
-        <thead><tr><th class="tool-icon-cell" aria-label="Photo"></th><th>Tool</th><th>Barcode</th><th>Checked out</th><th>Due back</th><th></th></tr></thead>
+        <thead><tr><th class="tool-icon-cell" data-i18n-aria="common.photo"></th><th data-i18n="checkout.tool">Tool</th><th data-i18n="common.barcode">Barcode</th><th data-i18n="checkout.checked_out">Checked out</th><th data-i18n="checkout.due_back">Due back</th><th></th></tr></thead>
         <tbody id="borrowed-body"></tbody>
       </table>
       <div id="return-panel" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08);">
-        <h3 style="margin: 0 0 0.5rem; font-size: 1rem;">Confirm return</h3>
+        <h3 style="margin: 0 0 0.5rem; font-size: 1rem;" data-i18n="checkout.confirm_return">Confirm return</h3>
         <p class="sub" id="return-hint"></p>
-        <label for="return-scan">Scan barcode / NFC (must match this tool)</label>
-        <input type="text" id="return-scan" autocomplete="off" placeholder="Scan to match">
+        <label for="return-scan" data-i18n="checkout.return_scan_label">Scan barcode / NFC (must match this tool)</label>
+        <input type="text" id="return-scan" autocomplete="off" data-i18n-placeholder="checkout.return_scan_placeholder">
         <div id="return-msg" style="margin-top: 0.75rem;"></div>
         <div class="row-actions" style="margin-top: 0.75rem;">
-          <button type="button" class="btn btn-secondary" id="cancel-return">Cancel</button>
+          <button type="button" class="btn btn-secondary" id="cancel-return" data-i18n="common.cancel">Cancel</button>
         </div>
       </div>
     </div>
 
     <div class="card">
-      <h2>Scan tools to borrow</h2>
-      <p class="sub">Scans are added to the list below. Nothing is checked out until you tap <strong>Confirm borrow</strong>. Use <strong>Exit</strong> to leave without borrowing.</p>
-      <label for="scan">Barcode / NFC</label>
-      <input type="text" id="scan" autocomplete="off" placeholder="Scan or enter code">
+      <h2 data-i18n="checkout.scan_borrow_title">Scan tools to borrow</h2>
+      <p class="sub" data-i18n-html="1" data-i18n="checkout.scan_borrow_sub">Scans are added to the list below. Nothing is checked out until you tap <strong>Confirm borrow</strong>. Use <strong>Exit</strong> to leave without borrowing.</p>
+      <label for="scan" data-i18n="checkout.scan_label">Barcode / NFC</label>
+      <input type="text" id="scan" autocomplete="off" data-i18n-placeholder="checkout.scan_placeholder">
       <div id="scan-msg" style="margin-top: 0.75rem;"></div>
     </div>
 
     <div id="queue-wrap" class="card checkout-queue" style="display: none; margin-top: 1rem;">
-      <h2>Ready to borrow</h2>
-      <p class="sub">Review the list, then confirm. Stock is checked when you confirm.</p>
+      <h2 data-i18n="checkout.queue_title">Ready to borrow</h2>
+      <p class="sub" data-i18n="checkout.queue_sub">Review the list, then confirm. Stock is checked when you confirm.</p>
       <div style="overflow-x: auto;">
         <table>
-          <thead><tr><th>Tool</th><th>Barcode</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="checkout.tool">Tool</th><th data-i18n="common.barcode">Barcode</th><th></th></tr></thead>
           <tbody id="queue-body"></tbody>
         </table>
       </div>
     </div>
 
     <div class="row-actions" style="margin-top: 1.5rem;">
-      <button type="button" class="btn btn-primary" id="btn-confirm-borrow">Confirm borrow</button>
-      <a class="btn btn-secondary" id="kiosk-cancel" href="index.php">Exit</a>
+      <button type="button" class="btn btn-primary" id="btn-confirm-borrow" data-i18n="checkout.confirm_borrow">Confirm borrow</button>
+      <a class="btn btn-secondary" id="kiosk-cancel" href="index.php" data-i18n="checkout.exit">Exit</a>
     </div>
   </div>
   <script src="assets/js/api.js"></script>
@@ -86,7 +87,12 @@
       var homeQs = '?warehouse_id=' + encodeURIComponent(warehouseId);
       document.getElementById('kiosk-cancel').href = 'index.php' + homeQs;
 
-      document.getElementById('operator-line').textContent = name + ' — add scans to your borrow list, then confirm. Return open loans from the table above.';
+      document.getElementById('operator-line').textContent = typeof tmT === 'function'
+        ? tmT('checkout.operator_line', { name: name })
+        : name + ' — add scans to your borrow list, then confirm. Return open loans from the table above.';
+      document.addEventListener('tm-i18n-ready', function () {
+        document.getElementById('operator-line').textContent = tmT('checkout.operator_line', { name: name });
+      });
 
       var scanInput = document.getElementById('scan');
       var scanMsg = document.getElementById('scan-msg');
@@ -183,7 +189,7 @@
               var btn = document.createElement('button');
               btn.type = 'button';
               btn.className = 'btn btn-primary';
-              btn.textContent = 'Return';
+              btn.textContent = typeof tmT === 'function' ? tmT('checkout.return') : 'Return';
               btn.addEventListener('click', function () {
                 openReturn(r.tool_id, r.tool_name, r.barcode);
               });

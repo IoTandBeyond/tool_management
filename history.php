@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?php require __DIR__ . '/includes/theme_head.php'; ?>
-  <title>History &amp; reports</title>
+  <title data-i18n="history.title">History &amp; reports</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -14,66 +14,66 @@
 <body>
   <?php require __DIR__ . '/includes/nav.php'; ?>
   <div class="wrap">
-    <h1>History &amp; reports</h1>
-    <p class="sub">Filter transactions and open analytics tabs.</p>
+    <h1 data-i18n="history.heading">History &amp; reports</h1>
+    <p class="sub" data-i18n="history.sub">Filter transactions and open analytics tabs.</p>
     <div class="tabs">
-      <button type="button" class="tab active" data-tab="history">Transaction history</button>
-      <button type="button" class="tab" data-tab="r1">Out per operator</button>
-      <button type="button" class="tab" data-tab="r2">Overdue</button>
-      <button type="button" class="tab" data-tab="r3">Long outstanding</button>
-      <button type="button" class="tab" data-tab="r4">Missing tools</button>
-      <button type="button" class="tab" data-tab="r5">Most used</button>
-      <button type="button" class="tab" data-tab="r6" id="tab-r6" style="display:none">In maintenance</button>
+      <button type="button" class="tab active" data-tab="history" data-i18n="history.tab_history">Transaction history</button>
+      <button type="button" class="tab" data-tab="r1" data-i18n="history.tab_r1">Out per operator</button>
+      <button type="button" class="tab" data-tab="r2" data-i18n="history.tab_r2">Overdue</button>
+      <button type="button" class="tab" data-tab="r3" data-i18n="history.tab_r3">Long outstanding</button>
+      <button type="button" class="tab" data-tab="r4" data-i18n="history.tab_r4">Missing tools</button>
+      <button type="button" class="tab" data-tab="r5" data-i18n="history.tab_r5">Most used</button>
+      <button type="button" class="tab" data-tab="r6" id="tab-r6" style="display:none" data-i18n="history.tab_r6">In maintenance</button>
     </div>
 
     <div id="panel-history" class="card">
-      <h2>Filters</h2>
+      <h2 data-i18n="history.filters">Filters</h2>
       
       <div class="history-filter-row">
         <div>
-          <label for="flt-op">Operator</label>
-          <select id="flt-op"><option value="">All</option></select>
+          <label for="flt-op" data-i18n="history.operator">Operator</label>
+          <select id="flt-op"><option value="" data-i18n="common.all">All</option></select>
         </div>
         <div>
-          <label for="flt-tool">Tool</label>
-          <select id="flt-tool"><option value="">All</option></select>
+          <label for="flt-tool" data-i18n="history.tool">Tool</label>
+          <select id="flt-tool"><option value="" data-i18n="common.all">All</option></select>
         </div>
         <div>
-          <label for="flt-category">Category</label>
+          <label for="flt-category" data-i18n="history.category_filter">Category</label>
           <select id="flt-category">
-            <option value="">All</option>
-            <option value="epp">EPP</option>
-            <option value="insumos">Insumos</option>
-            <option value="stqmk">STQMK</option>
-            <option value="measurement">Measurement equipment</option>
+            <option value="" data-i18n="common.all">All</option>
+            <option value="epp" data-i18n="history.cat_epp">EPP</option>
+            <option value="insumos" data-i18n="history.cat_insumos">Insumos</option>
+            <option value="stqmk" data-i18n="history.cat_stqmk">STQMK</option>
+            <option value="measurement" data-i18n="common.measurement_equipment">Measurement equipment</option>
           </select>
         </div>
         <div>
-          <label for="flt-from">From</label>
+          <label for="flt-from" data-i18n="history.from">From</label>
           <input type="date" id="flt-from">
         </div>
         <div>
-          <label for="flt-to">To</label>
+          <label for="flt-to" data-i18n="history.to">To</label>
           <input type="date" id="flt-to">
         </div>
       </div>
       <br>
       <div class="row-actions history-filters-actions">
-        <button type="button" class="btn btn-primary" id="btn-apply">Apply filters</button>
-        <button type="button" class="btn btn-secondary" id="btn-clear-filters">Clear filters</button>
+        <button type="button" class="btn btn-primary" id="btn-apply" data-i18n="common.apply">Apply filters</button>
+        <button type="button" class="btn btn-secondary" id="btn-clear-filters" data-i18n="common.clear_filters">Clear filters</button>
       </div>
       <br>
       <div style="overflow-x: auto; margin-top: 1rem;">
         <table>
           <thead>
             <tr>
-              <th>Checkout</th>
-              <th>Return</th>
-              <th>Operator</th>
-              <th>Tool</th>
-              <th>Category</th>
-              <th>Warehouse</th>
-              <th>Expected return</th>
+              <th data-i18n="history.col_checkout">Checkout</th>
+              <th data-i18n="history.col_return">Return</th>
+              <th data-i18n="history.col_operator">Operator</th>
+              <th data-i18n="history.col_tool">Tool</th>
+              <th data-i18n="history.col_category">Category</th>
+              <th data-i18n="history.col_warehouse">Warehouse</th>
+              <th data-i18n="history.col_expected">Expected return</th>
             </tr>
           </thead>
           <tbody id="hist-body"></tbody>
@@ -82,57 +82,57 @@
     </div>
 
     <div id="panel-r1" class="card" style="display: none;">
-      <h2>Tools currently checked out per operator</h2>
+      <h2 data-i18n="history.r1_title">Tools currently checked out per operator</h2>
       <div style="overflow-x: auto;">
         <table>
-          <thead><tr><th>Operator</th><th>Employee ID</th><th>Warehouse</th><th>Open loans</th></tr></thead>
+          <thead><tr><th data-i18n="history.col_operator">Operator</th><th data-i18n="operators.employee_id">Employee ID</th><th data-i18n="history.col_warehouse">Warehouse</th><th data-i18n="history.r1_open">Open loans</th></tr></thead>
           <tbody id="rep-r1"></tbody>
         </table>
       </div>
     </div>
     <div id="panel-r2" class="card" style="display: none;">
-      <h2>Overdue (measurement equipment only)</h2>
+      <h2 data-i18n="history.r2_title">Overdue (measurement equipment only)</h2>
       <div style="overflow-x: auto;">
         <table>
-          <thead><tr><th>Tool</th><th>Operator</th><th>Warehouse</th><th>Due</th></tr></thead>
+          <thead><tr><th data-i18n="history.col_tool">Tool</th><th data-i18n="history.col_operator">Operator</th><th data-i18n="history.col_warehouse">Warehouse</th><th data-i18n="history.r2_due">Due</th></tr></thead>
           <tbody id="rep-r2"></tbody>
         </table>
       </div>
     </div>
     <div id="panel-r3" class="card" style="display: none;">
-      <h2>Long outstanding (measurement equipment only)</h2>
+      <h2 data-i18n="history.r3_title">Long outstanding (measurement equipment only)</h2>
       <p class="sub" id="r3-note"></p>
       <div style="overflow-x: auto;">
         <table>
-          <thead><tr><th>Tool</th><th>Operator</th><th>Warehouse</th><th>Checkout</th></tr></thead>
+          <thead><tr><th data-i18n="history.col_tool">Tool</th><th data-i18n="history.col_operator">Operator</th><th data-i18n="history.col_warehouse">Warehouse</th><th data-i18n="history.col_checkout">Checkout</th></tr></thead>
           <tbody id="rep-r3"></tbody>
         </table>
       </div>
     </div>
     <div id="panel-r4" class="card" style="display: none;">
-      <h2>Tools marked missing</h2>
+      <h2 data-i18n="history.r4_title">Tools marked missing</h2>
       <div style="overflow-x: auto;">
         <table>
-          <thead><tr><th>Name</th><th>Barcode</th><th>NFC</th><th>Description</th></tr></thead>
+          <thead><tr><th data-i18n="common.name">Name</th><th data-i18n="common.barcode">Barcode</th><th>NFC</th><th data-i18n="history.r4_desc">Description</th></tr></thead>
           <tbody id="rep-r4"></tbody>
         </table>
       </div>
     </div>
     <div id="panel-r5" class="card" style="display: none;">
-      <h2>Most frequently borrowed (by checkout count)</h2>
+      <h2 data-i18n="history.r5_title">Most frequently borrowed (by checkout count)</h2>
       <div style="overflow-x: auto;">
         <table>
-          <thead><tr><th>Tool</th><th>Barcode</th><th>Checkouts</th></tr></thead>
+          <thead><tr><th data-i18n="history.col_tool">Tool</th><th data-i18n="common.barcode">Barcode</th><th data-i18n="history.r5_checkouts">Checkouts</th></tr></thead>
           <tbody id="rep-r5"></tbody>
         </table>
       </div>
     </div>
     <div id="panel-r6" class="card" style="display: none;">
-      <h2>Equipment in maintenance</h2>
-      <p class="sub">Tools currently at an external maintenance provider.</p>
+      <h2 data-i18n="history.r6_title">Equipment in maintenance</h2>
+      <p class="sub" data-i18n="history.r6_sub">Tools currently at an external maintenance provider.</p>
       <div style="overflow-x: auto;">
         <table>
-          <thead><tr><th>Tool</th><th>Barcode</th><th>Location</th><th>Provider</th><th>Sent</th><th>Notes</th></tr></thead>
+          <thead><tr><th data-i18n="history.col_tool">Tool</th><th data-i18n="common.barcode">Barcode</th><th data-i18n="history.r6_location">Location</th><th data-i18n="history.r6_provider">Provider</th><th data-i18n="history.r6_sent">Sent</th><th data-i18n="history.r6_notes">Notes</th></tr></thead>
           <tbody id="rep-r6"></tbody>
         </table>
       </div>
@@ -159,14 +159,16 @@
       }
 
       function categoryLabel(r) {
-        if (r.asset_type === 'measurement') return 'Measurement equipment';
-        return r.category_name || '—';
+        if (r.asset_type === 'measurement') {
+          return typeof tmT === 'function' ? tmT('common.measurement_equipment') : 'Measurement equipment';
+        }
+        return r.category_name || (typeof tmT === 'function' ? tmT('common.none_dash') : '—');
       }
 
       function fillFilters() {
         tmApi('operators_list', {}, true).then(function (d) {
           var s = document.getElementById('flt-op');
-          s.innerHTML = '<option value="">All</option>';
+          s.innerHTML = '<option value="">' + (typeof tmT === 'function' ? tmT('common.all') : 'All') + '</option>';
           (d.operators || []).forEach(function (o) {
             var opt = document.createElement('option');
             opt.value = o.id;
@@ -176,7 +178,7 @@
         });
         tmApi('tools_list', {}, true).then(function (d) {
           var s = document.getElementById('flt-tool');
-          s.innerHTML = '<option value="">All</option>';
+          s.innerHTML = '<option value="">' + (typeof tmT === 'function' ? tmT('common.all') : 'All') + '</option>';
           (d.tools || []).forEach(function (t) {
             var opt = document.createElement('option');
             opt.value = t.id;
@@ -249,7 +251,9 @@
         }
         if (which === 'r3') {
           tmApi('report_long_outstanding', {}, true).then(function (d) {
-            document.getElementById('r3-note').textContent = 'Open loans older than ' + (d.days_threshold || 30) + ' days.';
+            document.getElementById('r3-note').textContent = typeof tmT === 'function'
+              ? tmT('history.r3_note', { days: d.days_threshold || 30 })
+              : 'Open loans older than ' + (d.days_threshold || 30) + ' days.';
             var tb = document.getElementById('rep-r3');
             tb.innerHTML = '';
             (d.rows || []).forEach(function (r) {

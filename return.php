@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?php require __DIR__ . '/includes/theme_head.php'; ?>
-  <title>Return tools</title>
+  <title data-i18n="return_page.title">Return tools</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -12,36 +12,37 @@
 </head>
 <body data-home="index.php">
   <div class="theme-toggle-float">
+    <?php require __DIR__ . '/includes/lang_switcher.php'; ?>
     <?php require __DIR__ . '/includes/theme_toggle.php'; ?>
   </div>
   <div class="wrap">
-    <h1>Return tools</h1>
+    <h1 data-i18n="return_page.heading">Return tools</h1>
     <p class="sub" id="operator-line"></p>
 
     <div class="card">
-      <h2>Your open loans</h2>
-      <p id="none-msg" class="sub" style="display: none;">You have nothing to return. <a href="index.php">Back to home</a></p>
+      <h2 data-i18n="return_page.open_loans">Your open loans</h2>
+      <p id="none-msg" class="sub" style="display: none;"><span data-i18n="return_page.nothing">You have nothing to return.</span> <a href="index.php" data-i18n="return_page.back_home">Back to home</a></p>
       <table id="loans-table" style="display: none;">
         <thead>
-          <tr><th>Tool</th><th>Barcode</th><th>Checked out</th><th></th></tr>
+          <tr><th data-i18n="checkout.tool">Tool</th><th data-i18n="common.barcode">Barcode</th><th data-i18n="checkout.checked_out">Checked out</th><th></th></tr>
         </thead>
         <tbody id="loans-body"></tbody>
       </table>
     </div>
 
     <div class="card" id="scan-panel" style="display: none; margin-top: 1rem;">
-      <h2 id="scan-title">Confirm return</h2>
+      <h2 id="scan-title" data-i18n="return_page.confirm_return">Confirm return</h2>
       <p class="sub" id="scan-hint"></p>
-      <label for="scan">Scan same tool barcode / NFC</label>
-      <input type="text" id="scan" autocomplete="off" placeholder="Scan to match">
+      <label for="scan" data-i18n="return_page.scan_label">Scan same tool barcode / NFC</label>
+      <input type="text" id="scan" autocomplete="off" data-i18n-placeholder="return_page.scan_placeholder">
       <div id="scan-msg" style="margin-top: 0.75rem;"></div>
       <div class="row-actions">
-        <button type="button" class="btn btn-secondary" id="cancel-scan">Cancel</button>
+        <button type="button" class="btn btn-secondary" id="cancel-scan" data-i18n="common.cancel">Cancel</button>
       </div>
     </div>
 
     <div class="row-actions" style="margin-top: 1.5rem;">
-      <a class="btn btn-primary" href="index.php">Done</a>
+      <a class="btn btn-primary" href="index.php" data-i18n="return_page.done">Done</a>
     </div>
   </div>
   <script src="assets/js/api.js"></script>
@@ -56,7 +57,13 @@
         return;
       }
 
-      document.getElementById('operator-line').textContent = name + ' — tap Return, then scan the tool.';
+      function setOperatorLine() {
+        document.getElementById('operator-line').textContent = typeof tmT === 'function'
+          ? tmT('return_page.operator_line', { name: name })
+          : name + ' — tap Return, then scan the tool.';
+      }
+      setOperatorLine();
+      document.addEventListener('tm-i18n-ready', setOperatorLine);
 
       var pendingToolId = null;
       var pendingName = '';

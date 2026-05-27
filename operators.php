@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?php require __DIR__ . '/includes/theme_head.php'; ?>
-  <title>Operators</title>
+  <title data-i18n="operators.title">Operators</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -14,15 +14,15 @@
 <body>
   <?php require __DIR__ . '/includes/nav.php'; ?>
   <div class="wrap">
-    <h1>Operators</h1>
-    <p class="sub">Kiosk users: employee ID must be unique per company. Operators are tied to one warehouse.</p>
+    <h1 data-i18n="operators.heading">Operators</h1>
+    <p class="sub" data-i18n="operators.sub">Kiosk users: employee ID must be unique per company. Operators are tied to one warehouse.</p>
     <div class="row-actions" style="margin-bottom: 1rem;">
-      <button type="button" class="btn btn-primary" id="btn-add">Add operator</button>
+      <button type="button" class="btn btn-primary" id="btn-add" data-i18n="operators.add">Add operator</button>
     </div>
     <div class="card" style="overflow-x: auto;">
       <table>
         <thead>
-          <tr><th>Name</th><th>Employee ID</th><th>Company</th><th>Warehouse</th><th>Department</th><th></th></tr>
+          <tr><th data-i18n="common.name">Name</th><th data-i18n="operators.employee_id">Employee ID</th><th data-i18n="common.company">Company</th><th data-i18n="common.warehouse">Warehouse</th><th data-i18n="operators.department">Department</th><th></th></tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>

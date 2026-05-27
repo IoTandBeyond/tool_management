@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?php require __DIR__ . '/includes/theme_head.php'; ?>
-  <title>Companies</title>
+  <title data-i18n="companies.title">Companies</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -14,10 +14,10 @@
 <body>
   <?php require __DIR__ . '/includes/nav.php'; ?>
   <div class="wrap">
-    <h1>Companies</h1>
-    <p class="sub">Create and edit companies (super admin only).</p>
+    <h1 data-i18n="companies.heading">Companies</h1>
+    <p class="sub" data-i18n="companies.sub">Create and edit companies (super admin only).</p>
     <div class="row-actions" style="margin-bottom: 1rem;">
-      <button type="button" class="btn btn-primary" id="btn-add">Add company</button>
+      <button type="button" class="btn btn-primary" id="btn-add" data-i18n="companies.add">Add company</button>
     </div>
     <div class="card" style="overflow-x: auto;">
       <table class="companies-table">

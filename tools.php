@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?php require __DIR__ . '/includes/theme_head.php'; ?>
-  <title>Tools</title>
+  <title data-i18n="tools.title">Tools</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -14,27 +14,27 @@
 <body>
   <?php require __DIR__ . '/includes/nav.php'; ?>
   <div class="wrap">
-    <h1>Tools</h1>
-    <p class="sub">Consumable assets (PPE, supplies) — issued to operators and not returned. Barcode is unique per company.</p>
+    <h1 data-i18n="tools.heading">Tools</h1>
+    <p class="sub" data-i18n="tools.sub">Consumable assets (PPE, supplies) — issued to operators and not returned. Barcode is unique per company.</p>
     <div id="company-row" class="row-actions" style="margin-bottom: 1rem; display: none;">
-      <label for="company-select">Company</label>
+      <label for="company-select" data-i18n="common.company">Company</label>
       <select id="company-select"></select>
-      <button type="button" class="btn btn-secondary" id="btn-company-apply">Load</button>
+      <button type="button" class="btn btn-secondary" id="btn-company-apply" data-i18n="common.load">Load</button>
     </div>
     <div class="row-actions" style="margin-bottom: 1rem;">
-      <button type="button" class="btn btn-primary" id="btn-add">Add tool</button>
+      <button type="button" class="btn btn-primary" id="btn-add" data-i18n="tools.add">Add tool</button>
     </div>
     <div class="tools-list-toolbar">
       <div class="tools-list-search">
-        <label for="list-search">Search</label>
-        <input type="search" id="list-search" placeholder="Name, barcode, NFC, description…" autocomplete="off">
+        <label for="list-search" data-i18n="common.search">Search</label>
+        <input type="search" id="list-search" data-i18n-placeholder="tools.search_placeholder" autocomplete="off">
       </div>
       <div>
-        <label for="list-category">Category</label>
-        <select id="list-category"><option value="">All categories</option></select>
+        <label for="list-category" data-i18n="common.category">Category</label>
+        <select id="list-category"><option value="" data-i18n="common.all_categories">All categories</option></select>
       </div>
       <div>
-        <label for="list-page-size">Rows per page</label>
+        <label for="list-page-size" data-i18n="common.rows_per_page">Rows per page</label>
         <select id="list-page-size">
           <option value="15" selected>15</option>
           <option value="30">30</option>
@@ -47,13 +47,13 @@
       <table>
         <thead>
           <tr>
-            <th>Photo</th>
-            <th>Name</th>
-            <th>Barcode</th>
-            <th>Warehouse</th>
-            <th>Stock</th>
-            <th>Category</th>
-            <th class="col-catalog">Catalog</th>
+            <th data-i18n="common.photo">Photo</th>
+            <th data-i18n="common.name">Name</th>
+            <th data-i18n="common.barcode">Barcode</th>
+            <th data-i18n="tools.col_warehouse">Warehouse</th>
+            <th data-i18n="common.stock">Stock</th>
+            <th data-i18n="tools.col_category">Category</th>
+            <th class="col-catalog" data-i18n="tools.col_catalog">Catalog</th>
             <th></th>
           </tr>
         </thead>
@@ -63,8 +63,8 @@
     <div class="tools-list-pager">
       <p class="sub" id="list-page-info" style="margin: 0;"></p>
       <div class="row-actions">
-        <button type="button" class="btn btn-secondary" id="list-prev">Previous</button>
-        <button type="button" class="btn btn-secondary" id="list-next">Next</button>
+        <button type="button" class="btn btn-secondary" id="list-prev" data-i18n="common.previous">Previous</button>
+        <button type="button" class="btn btn-secondary" id="list-next" data-i18n="common.next">Next</button>
       </div>
     </div>
   </div>
@@ -303,7 +303,7 @@
 
       function openAdd() {
         editingTool = null;
-        document.getElementById('modal-title').textContent = 'Add tool';
+        document.getElementById('modal-title').textContent = typeof tmT === 'function' ? tmT('tools.modal_add') : 'Add tool';
         document.getElementById('f-id').value = '';
         document.getElementById('f-name').value = '';
         document.getElementById('f-barcode').value = '';
@@ -324,11 +324,11 @@
         var toolId = Number(id);
         var t = toolsCache.find(function (x) { return Number(x.id) === toolId; });
         if (!t) {
-          alert('Tool not found. Reload the list and try again.');
+          alert(typeof tmT === 'function' ? tmT('tools.not_found') : 'Tool not found. Reload the list and try again.');
           return;
         }
         editingTool = t;
-        document.getElementById('modal-title').textContent = 'Edit tool';
+        document.getElementById('modal-title').textContent = typeof tmT === 'function' ? tmT('tools.modal_edit') : 'Edit tool';
         document.getElementById('f-id').value = String(t.id);
         document.getElementById('f-name').value = t.name || '';
         document.getElementById('f-barcode').value = t.barcode || '';
@@ -408,7 +408,7 @@
         else if (path) payload.image = path;
 
         if (!payload.id && (!payload.warehouse_id || payload.stock_qty == null)) {
-          alert('Choose warehouse and stock for a new tool.');
+          alert(typeof tmT === 'function' ? tmT('tools.warehouse_stock_required') : 'Choose warehouse and stock for a new tool.');
           return;
         }
 
